@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-func (svc *service) ScrapAll(criterion model.Criterion, filePath string) error {
+func (svc *service) ScrapAll(criterion model.Criterion, dirPath string) error {
 	startingPoint := model.NewPPWT("0")
 
 	res, err := svc.kpuRepo.GetPPWTList(startingPoint)
@@ -22,10 +22,7 @@ func (svc *service) ScrapAll(criterion model.Criterion, filePath string) error {
 	}
 
 	for i, re := range res {
-		fileName := filePath
-		ext := filepath.Ext(fileName)
-		fileName = strings.TrimSuffix(fileName, ext)
-		fileName = fileName + "_" + re.Kode + ext
+		fileName := filepath.Join(dirPath, re.Nama+".csv")
 
 		fmt.Println("Start to scrap, store file to", fileName, re.Kode, i)
 

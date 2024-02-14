@@ -43,7 +43,7 @@ func main() {
 		//DeltaErrThreshold:     50,
 	}
 
-	filePath := "export/compiled.csv"
+	filePath := "export/"
 
 	if err := svc.ScrapAll(criterion, filePath); err != nil {
 		fmt.Println(err.Error())
