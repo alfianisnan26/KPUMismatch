@@ -2,12 +2,10 @@ package scrapper
 
 import (
 	"kawalrealcount/internal/data/dao"
-	"kawalrealcount/internal/data/model"
 )
 
 type Service interface {
-	ScrapAllSeparated(criterion model.Criterion, dirPath string) error
-	ScrapAllCompiled(criterion model.Criterion, filePath string) error
+	ScrapAllCompiled(filePath string) error
 }
 
 type Param struct {

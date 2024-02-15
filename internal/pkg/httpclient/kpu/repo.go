@@ -136,9 +136,21 @@ func (r repo) GetHHCWInfo(req model.PPWTEntity) (model.HHCWEntity, error) {
 	return respData.ToModel(req)
 }
 
+type noCache struct{}
+
+func (n noCache) Get(key string, expiry time.Duration, fallback func(string) ([]byte, error)) ([]byte, error) {
+	return fallback(key)
+}
+
 func New(param Param) dao.KPU {
+
+	cache := param.CacheRepo
+	if cache == nil {
+		cache = noCache{}
+	}
+
 	return &repo{
 		client:    http.DefaultClient,
-		cacheRepo: param.CacheRepo,
+		cacheRepo: cache,
 	}
 }

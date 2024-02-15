@@ -24,7 +24,7 @@ func (hhcw HHCWEntity) String() string {
 		parent = (*hhcw.Parent).Kode
 	}
 
-	return fmt.Sprintf("(%v) %v > %v \t | Suara: %v \t | Pengguna: %v", hhcw.UpdatedAt, parent, hhcw.Chart.String(), hhcw.Administrasi.Suara.String(), hhcw.Administrasi.PenggunaTotal.String())
+	return fmt.Sprintf("%v > %v \t | %v \t", parent, hhcw.Chart.String(), hhcw.Administrasi.Suara.String())
 }
 
 type ChartInfo struct {

@@ -16,11 +16,11 @@ type PPWTEntity struct {
 	Parent *PPWTEntity
 }
 
-func (e PPWTEntity) GetCanonicalName() []string {
+func (e PPWTEntity) GetCanonicalName() []interface{} {
 	if e.Tingkat <= 0 {
 		return nil
 	}
-	canonicalName := make([]string, 5)
+	canonicalName := make([]interface{}, 5)
 	canonicalName[e.Tingkat-1] = e.Nama
 
 	node := e.Parent
@@ -34,7 +34,7 @@ func (e PPWTEntity) GetCanonicalName() []string {
 
 func (e PPWTEntity) String() string {
 	if e.Tingkat == 0 {
-		return fmt.Sprintf("NaN")
+		return "NaN"
 	}
 
 	if e.Nama == "" {

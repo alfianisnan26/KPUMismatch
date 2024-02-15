@@ -1,19 +1,16 @@
 package scrapper
 
 import (
-	"encoding/csv"
 	"fmt"
+	"github.com/360EntSecGroup-Skylar/excelize"
 	"kawalrealcount/internal/data/model"
-	"kawalrealcount/internal/pkg/semaphore"
 	"math"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
-	"sync"
+	"time"
 )
 
 var header = []string{
+	"Terakhir Diperbarui",
 	"Kode",
 	"Provinsi",
 	"Kabupaten",
@@ -36,7 +33,21 @@ var header = []string{
 	"Link Web KPU",
 }
 
-func (svc *service) ScrapAllSeparated(criterion model.Criterion, dirPath string) error {
+const (
+	SheetSelisihJumlahDataSuaraSah        = "Selisih Jumlah Data Suara Sah"
+	SheetSelisihJumlahSuaraDenganTotal    = "Selisih Jumlah Suara dengan Total"
+	SheetSelisihJumlahHakPilihDenganSuara = "Selisih Jumlah Hak Pilih dengan Suara"
+	SheetTPSAllIn                         = "TPS All In"
+)
+
+var sheet = []string{
+	SheetSelisihJumlahDataSuaraSah,
+	SheetSelisihJumlahSuaraDenganTotal,
+	SheetSelisihJumlahHakPilihDenganSuara,
+	SheetTPSAllIn,
+}
+
+func (svc *service) ScrapAllCompiled(filePath string) error {
 	startingPoint := model.NewPPWT("0")
 
 	res, err := svc.kpuRepo.GetPPWTList(startingPoint)
@@ -44,131 +55,115 @@ func (svc *service) ScrapAllSeparated(criterion model.Criterion, dirPath string)
 		return err
 	}
 
-	for i, re := range res {
-		fileName := filepath.Join(dirPath, re.Nama+".csv")
+	f := excelize.NewFile()
 
-		file, err := os.Create(fileName)
+	sheetMap := make(map[string]int, len(sheet))
+
+	for _, s := range sheet {
+		_ = f.NewSheet(s)
+		for col, value := range header {
+			cell := excelize.ToAlphaString(col) + "1" // Write in first row
+			f.SetCellValue(s, cell, value)
+		}
+
+		sheetMap[s] = 2
+	}
+
+	for i, re := range res {
+		fmt.Println("Start to scrap, store file to", filePath, re.Nama, sheetMap)
+
+		ppwtList, err := svc.ScrapPPWTWithStartingPoint(startingPoint)
 		if err != nil {
 			return err
 		}
 
-		w := csv.NewWriter(file)
+		length := len(ppwtList)
 
-		fmt.Println("Start to scrap, store file to", fileName, re.Kode, i)
+		fmt.Println("Found ppwt list", length)
 
-		if err := svc.ScrapAllWithStartingPoint(w, criterion, re); err != nil {
+		hhcwListCh := make(chan model.HHCWEntity, length)
+
+		if err := svc.ScrapAllWithStartingPoint(hhcwListCh, re, ppwtList); err != nil {
 			fmt.Println("Error to scrap", i, re.Kode)
 		}
 
-		w.Flush()
-		file.Close()
-	}
-
-	return nil
-}
-
-func (svc *service) ScrapAllCompiled(criterion model.Criterion, filePath string) error {
-	startingPoint := model.NewPPWT("0")
-
-	res, err := svc.kpuRepo.GetPPWTList(startingPoint)
-	if err != nil {
-		return err
-	}
-
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	w := csv.NewWriter(file)
-	defer w.Flush()
-	_ = w.Write(header)
-
-	for i, re := range res {
-		fmt.Println("Start to scrap, store file to", filePath, re.Kode, i)
-
-		if err := svc.ScrapAllWithStartingPoint(w, criterion, re); err != nil {
-			fmt.Println("Error to scrap", i, re.Kode)
-		}
-	}
-
-	return nil
-}
-
-func (svc *service) ScrapAllWithStartingPoint(w *csv.Writer, criterion model.Criterion, startingPoint model.PPWTEntity) error {
-	var err error
-	if startingPoint.Tingkat != 0 && startingPoint.Parent == nil {
-		startingPoint, err = svc.kpuRepo.GetPPWTParent(startingPoint)
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Println("Getting ppwt list for", startingPoint.GetCanonicalCode(), startingPoint.GetCanonicalName())
-
-	ppwtList, err := svc.ScrapPPWTWithStartingPoint(startingPoint)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Found ppwt list", len(ppwtList))
-
-	hhcwListCh := make(chan model.HHCWEntity, len(ppwtList))
-
-	go func() {
-		wg := new(sync.WaitGroup)
-		sm := semaphore.NewSemaphore(svc.maximumRunningThread)
-
-		wg.Add(len(ppwtList))
-
-		for _, entity := range ppwtList {
-
-			sm.Acquire()
-			go func(entity model.PPWTEntity) {
-				defer sm.Release()
-				defer wg.Done()
-
-				res, err := svc.kpuRepo.GetHHCWInfo(entity)
-				if err != nil {
-					return
+	LoopFor:
+		for {
+			select {
+			case hhwc, ok := <-hhcwListCh:
+				if !ok {
+					break LoopFor
 				}
 
-				hhcwListCh <- res
-			}(entity)
-		}
-
-		wg.Wait()
-		close(hhcwListCh)
-	}()
-
-	for {
-		select {
-		case hhwc, ok := <-hhcwListCh:
-			if !ok {
-				return nil
-			}
-
-			if criterion.IsMatchFor(hhwc) {
-				ppwt := *hhwc.Parent
-				link, err := svc.kpuRepo.GetPageLink(*hhwc.Parent)
-				if err != nil {
-					return err
+				// filter selisih data paslon
+				if sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah; sum != 0 && sah != 0 && sum != sah {
+					if err := svc.writeCell(f, &sheetMap, SheetSelisihJumlahDataSuaraSah, hhwc); err != nil {
+						return err
+					}
 				}
-				fmt.Printf("%v %v\t%v\t%v\n", strings.Join(ppwt.GetCanonicalName(), "/"), ppwt.Kode, hhwc.Chart.String(), link)
 
-				col := make([]string, 0, len(header))
-				col = append(col, ppwt.Kode)
-				col = append(col, ppwt.GetCanonicalName()...)
-				col = append(col, strconv.Itoa(hhwc.Chart.Paslon01), strconv.Itoa(hhwc.Chart.Paslon02), strconv.Itoa(hhwc.Chart.Paslon03), strconv.Itoa(hhwc.Chart.Sum()))
-				col = append(col, strconv.Itoa(hhwc.Administrasi.Suara.Sah), strconv.Itoa(hhwc.Administrasi.Suara.TidakSah), strconv.Itoa(hhwc.Administrasi.Suara.Total))
-				col = append(col, strconv.Itoa(hhwc.Administrasi.PemilihDpt.Jumlah), strconv.Itoa(hhwc.Administrasi.PenggunaDptb.Jumlah), strconv.Itoa(hhwc.Administrasi.PenggunaNonDpt.Jumlah), strconv.Itoa(hhwc.Administrasi.PenggunaTotal.Jumlah))
-				col = append(col, strconv.Itoa(int(math.Abs(float64(hhwc.Chart.Sum()-hhwc.Administrasi.Suara.Sah)))))
-				col = append(col, strconv.Itoa(int(math.Abs(float64((hhwc.Administrasi.Suara.Sah+hhwc.Administrasi.Suara.TidakSah)-hhwc.Administrasi.Suara.Total)))))
-				col = append(col, strconv.Itoa(int(math.Abs(float64(hhwc.Administrasi.PenggunaTotal.Jumlah-hhwc.Administrasi.Suara.Total)))))
-				col = append(col, link)
-				_ = w.Write(col)
+				// filter selisih total
+				if s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total; s+ts != 0 && tot != 0 && s+ts != tot {
+					if err := svc.writeCell(f, &sheetMap, SheetSelisihJumlahSuaraDenganTotal, hhwc); err != nil {
+						return err
+					}
+				}
+				// filter selisih hak pilih
+				if st, pt := hhwc.Administrasi.Suara.Total, hhwc.Administrasi.PenggunaTotal.Jumlah; st != pt {
+					if err := svc.writeCell(f, &sheetMap, SheetSelisihJumlahHakPilihDenganSuara, hhwc); err != nil {
+						return err
+					}
+				}
+
+				// filter all in
+				if hhwc.Chart.IsAllIn() {
+					if err := svc.writeCell(f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
+						return err
+					}
+				}
+			default:
 			}
+
 		}
 	}
+
+	for _, v := range f.GetSheetMap() {
+		if _, found := sheetMap[v]; !found {
+			f.DeleteSheet(v)
+		}
+	}
+	return f.SaveAs(filePath)
+}
+
+func (svc *service) writeCell(f *excelize.File, sheetmap *map[string]int, sheet string, data model.HHCWEntity) error {
+
+	link, err := svc.kpuRepo.GetPageLink(*data.Parent)
+	if err != nil {
+		return err
+	}
+
+	var row = make([]interface{}, 0, len(header))
+
+	row = append(row, data.UpdatedAt.Format(time.DateTime), data.Parent.Kode)
+	row = append(row, data.Parent.GetCanonicalName()...)
+	row = append(row, data.Chart.Paslon01, data.Chart.Paslon02, data.Chart.Paslon03, data.Chart.Sum())
+	row = append(row, data.Administrasi.Suara.Sah, data.Administrasi.Suara.TidakSah, data.Administrasi.Suara.Total)
+	row = append(row, data.Administrasi.PemilihDpt.Jumlah, data.Administrasi.PenggunaDptb.Jumlah, data.Administrasi.PenggunaNonDpt.Jumlah, data.Administrasi.PenggunaTotal.Jumlah)
+	row = append(row, int(math.Abs(float64(data.Chart.Sum()-data.Administrasi.Suara.Sah))))
+	row = append(row, int(math.Abs(float64((data.Administrasi.Suara.Sah+data.Administrasi.Suara.TidakSah)-data.Administrasi.Suara.Total))))
+	row = append(row, int(math.Abs(float64(data.Administrasi.Suara.Total-data.Administrasi.PenggunaTotal.Jumlah))))
+	row = append(row, link)
+
+	if (*sheetmap)[sheet]%100 == 0 {
+		fmt.Printf("Sample %% 100: %s\t| %s\n", data.String(), link)
+	}
+
+	for col, value := range row {
+		cell := excelize.ToAlphaString(col) + strconv.Itoa((*sheetmap)[sheet]) // Write in first row
+		f.SetCellValue(sheet, cell, value)
+	}
+
+	(*sheetmap)[sheet]++
+
+	return nil
 }

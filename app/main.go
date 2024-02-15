@@ -1,22 +1,42 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"kawalrealcount/internal/data/model"
+	"kawalrealcount/internal/data/dao"
 	"kawalrealcount/internal/pkg/httpclient/kawalpemilu"
 	"kawalrealcount/internal/pkg/httpclient/kpu"
 	"kawalrealcount/internal/pkg/redis"
+	"kawalrealcount/internal/pkg/sqlite"
 	"kawalrealcount/internal/service/scrapper"
 )
 
 func main() {
 
-	cacheRepo, err := redis.New(redis.Param{
-		Host: "localhost:6379",
-	})
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+	filePath := flag.String("filepath", "report.xlsx", "set output filepath")
+	noCache := flag.Bool("nocache", false, "use only sql db")
+	redisHost := flag.String("redishost", "localhost:6379", "set redis host")
+	sqlitePath := flag.String("sqlitepath", "db.sqlite3", "set sqlite path")
+	var (
+		cacheRepo dao.Cache
+		err       error
+	)
+	if !*noCache {
+		cacheRepo, err = redis.New(redis.Param{
+			Host: *redisHost,
+		})
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+
+	if cacheRepo == nil {
+		cacheRepo, err = sqlite.New(sqlite.Param{
+			FilePath: *sqlitePath,
+		})
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 
 	kpuRepo := kpu.New(kpu.Param{
@@ -32,24 +52,7 @@ func main() {
 		MaximumRunningThread: 50,
 	})
 
-	criterion := model.Criterion{
-		//IgnoreAll: true,
-
-		WithNonZeroMismatchSuara: true,
-		WithInvalidSumOfSuara:    true,
-
-		//WithNonZeroMismatchSuaraAndPengguna: true,
-		//WithDeltaErrThreshold: true,
-		//DeltaErrThreshold:     50,
-
-		WithSumThreshold: true,
-		SumThreshold:     300,
-		//WithAllIn: true,
-	}
-
-	filePath := "export/sum_all.csv"
-
-	if err := svc.ScrapAllCompiled(criterion, filePath); err != nil {
+	if err := svc.ScrapAllCompiled(*filePath); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
