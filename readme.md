@@ -13,7 +13,7 @@ The purpose of this Golang worker is to retrieve data from the Sirekap API and s
 
 ```sh
 docker pull alfianisnan26/kawalrealcount:latest
-docker run --env-file .env alfianisnan26/kawalrealcount:latest
+docker run -d --env-file .env --name kawalrealcount alfianisnan26/kawalrealcount:latest
 ```
 
 ### Environment Variables
@@ -26,6 +26,7 @@ SQLITE_PATH=db.sqlite3
 POSTGRES_TABLE=kpu_tps
 POSTGRES_URL=postgres://admin:root@localhost:5432/postgres
 SCHEDULE_PATTERN=0 */3 * * *
+SCRAP_ALL=False
 ```
 
 - `FILE_PATH`: Path to the Excel report file.
@@ -35,6 +36,7 @@ SCHEDULE_PATTERN=0 */3 * * *
 - `POSTGRES_TABLE`: Name of the PostgreSQL table to store data.
 - `POSTGRES_URL`: URL for connecting to the PostgreSQL database.
 - `SCHEDULE_PATTERN`: Cron-like schedule pattern for periodic execution.
+- `SCRAP_ALL`: To enable scrap all data without check the reconciliation process
 
 ## Disclaimer
 
