@@ -66,7 +66,8 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 	}
 
 	for i, re := range res {
-		fmt.Println("Start to scrap, store file to", filePath, re.Nama, sheetMap)
+		percentage := float32(i+1) / float32(len(res)) * 100
+		fmt.Printf("[%03.2f%%] Start to scrap, store file to: %s | %s | %v\n", percentage, filePath, re.Nama, sheetMap)
 
 		ppwtList, err := svc.ScrapPPWTWithStartingPoint(startingPoint)
 		if err != nil {
@@ -83,6 +84,8 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 			fmt.Println("Error to scrap", i, re.Kode)
 		}
 
+		var count int
+
 	LoopFor:
 		for {
 			select {
@@ -90,20 +93,21 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 				if !ok {
 					break LoopFor
 				}
+				count++
+				subPercentage := float32(count) / float32(length) * 100
 
 				// filter selisih data paslon
 				s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total
-				st, pt := hhwc.Administrasi.Suara.Total, hhwc.Administrasi.PenggunaTotal.Jumlah
 				sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah
-				if (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) || (st != 0 && pt != 0 && st != pt) {
-					if err := svc.writeCell(f, &sheetMap, SheetSelisihData, hhwc); err != nil {
+				if (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) {
+					if err := svc.writeCell(percentage, subPercentage, f, &sheetMap, SheetSelisihData, hhwc); err != nil {
 						return err
 					}
 				}
 
 				// filter all in
 				if hhwc.Chart.IsAllIn() {
-					if err := svc.writeCell(f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
+					if err := svc.writeCell(percentage, subPercentage, f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
 						return err
 					}
 				}
@@ -116,7 +120,7 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 	return f.SaveAs(filePath)
 }
 
-func (svc *service) writeCell(f *excelize.File, sheetmap *map[string]int, sheet string, data model.HHCWEntity) error {
+func (svc *service) writeCell(p, sp float32, f *excelize.File, sheetmap *map[string]int, sheet string, data model.HHCWEntity) error {
 
 	link, err := svc.kpuRepo.GetPageLink(*data.Parent)
 	if err != nil {
@@ -136,7 +140,7 @@ func (svc *service) writeCell(f *excelize.File, sheetmap *map[string]int, sheet 
 	row = append(row, link)
 
 	if (*sheetmap)[sheet]%100 == 0 {
-		fmt.Printf("Sample %% 100: %s\t| %s\n", data.String(), link)
+		fmt.Printf("[%03.2f%%][%03.2f%%]\t%d | %s\t| %s\n", p, sp, (*sheetmap)[sheet], data.String(), link)
 	}
 
 	for col, value := range row {

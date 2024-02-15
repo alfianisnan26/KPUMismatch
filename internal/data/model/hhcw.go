@@ -24,7 +24,7 @@ func (hhcw HHCWEntity) String() string {
 		parent = (*hhcw.Parent).Kode
 	}
 
-	return fmt.Sprintf("%v > %v \t | %v \t", parent, hhcw.Chart.String(), hhcw.Administrasi.Suara.String())
+	return fmt.Sprintf("%v > %v \t", parent, hhcw.Chart.String())
 }
 
 type ChartInfo struct {
@@ -36,7 +36,7 @@ type ChartInfo struct {
 }
 
 func (ci *ChartInfo) String() string {
-	return fmt.Sprintf("01:%d | 02:%d | 03:%d | Sum:%d | Dist:%.2f%%", ci.Paslon01, ci.Paslon02, ci.Paslon03, ci.Sum(), ci.GetHighestDeltaPercentage())
+	return fmt.Sprintf("01:%4d | 02:%4d | 03:%4d | Sum:%4d | Dist:%02.2f%%", ci.Paslon01, ci.Paslon02, ci.Paslon03, ci.Sum(), ci.GetHighestDeltaPercentage())
 }
 
 func (ci *ChartInfo) IsAllIn() bool {
@@ -95,7 +95,7 @@ type JLPData struct {
 }
 
 func (jd JLPData) String() string {
-	return fmt.Sprintf("L:%d | P:%d | Sum:%d | Valid:%v", jd.LakiLaki, jd.Perempuan, jd.Jumlah, jd.IsValid())
+	return fmt.Sprintf("L:%03d | P:%03d | Sum:%03d | Valid:%v", jd.LakiLaki, jd.Perempuan, jd.Jumlah, jd.IsValid())
 }
 
 func (jd JLPData) IsValid() bool {
