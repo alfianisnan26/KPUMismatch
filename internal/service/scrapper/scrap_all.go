@@ -66,7 +66,11 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 	}
 
 	for i, re := range res {
-		percentage := float32(i+1) / float32(len(res)) * 100
+		var percentage float32
+		if i != 0 {
+			percentage = float32(i) / float32(len(res)) * 100
+		}
+
 		fmt.Printf("[%03.2f%%] Start to scrap, store file to: %s | %s | %v\n", percentage, filePath, re.Nama, sheetMap)
 
 		ppwtList, err := svc.ScrapPPWTWithStartingPoint(startingPoint)
@@ -94,20 +98,22 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 					break LoopFor
 				}
 				count++
-				subPercentage := float32(count) / float32(length) * 100
+				subPercentageRaw := float32(count) / float32(length)
+				subPercentage := subPercentageRaw * 100
+				deltaPercentage := percentage + (((float32(i+1) / float32(len(res)) * 100) - percentage) * subPercentageRaw)
 
 				// filter selisih data paslon
 				s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total
 				sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah
 				if (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) {
-					if err := svc.writeCell(percentage, subPercentage, f, &sheetMap, SheetSelisihData, hhwc); err != nil {
+					if err := svc.writeCell(deltaPercentage, subPercentage, f, &sheetMap, SheetSelisihData, hhwc); err != nil {
 						return err
 					}
 				}
 
 				// filter all in
 				if hhwc.Chart.IsAllIn() {
-					if err := svc.writeCell(percentage, subPercentage, f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
+					if err := svc.writeCell(deltaPercentage, subPercentage, f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
 						return err
 					}
 				}
