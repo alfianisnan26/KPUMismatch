@@ -13,7 +13,30 @@ import (
 	"sync"
 )
 
-func (svc *service) ScrapAll(criterion model.Criterion, dirPath string) error {
+var header = []string{
+	"Kode",
+	"Provinsi",
+	"Kabupaten",
+	"Kecamatan",
+	"Kelurahan",
+	"TPS",
+	"Suara Paslon 01",
+	"Suara Paslon 02",
+	"Suara Paslon 03",
+	"Jumlah",
+	"Suara Sah",
+	"Suara Tidak Sah",
+	"Jumlah Suara",
+	"DPT", "DPTb",
+	"DPTk",
+	"Jumlah Hak Pilih",
+	"Selisih Suara Semua Paslon dengan Jumlah Suara Sah",
+	"Selisih Suara Sah dan Tidak Sah dengan Total Suara",
+	"Selisih Hak Pilih dengan Jumlah Suara",
+	"Link Web KPU",
+}
+
+func (svc *service) ScrapAllSeparated(criterion model.Criterion, dirPath string) error {
 	startingPoint := model.NewPPWT("0")
 
 	res, err := svc.kpuRepo.GetPPWTList(startingPoint)
@@ -24,9 +47,48 @@ func (svc *service) ScrapAll(criterion model.Criterion, dirPath string) error {
 	for i, re := range res {
 		fileName := filepath.Join(dirPath, re.Nama+".csv")
 
+		file, err := os.Create(fileName)
+		if err != nil {
+			return err
+		}
+
+		w := csv.NewWriter(file)
+
 		fmt.Println("Start to scrap, store file to", fileName, re.Kode, i)
 
-		if err := svc.ScrapAllWithStartingPoint(criterion, re, fileName); err != nil {
+		if err := svc.ScrapAllWithStartingPoint(w, criterion, re); err != nil {
+			fmt.Println("Error to scrap", i, re.Kode)
+		}
+
+		w.Flush()
+		file.Close()
+	}
+
+	return nil
+}
+
+func (svc *service) ScrapAllCompiled(criterion model.Criterion, filePath string) error {
+	startingPoint := model.NewPPWT("0")
+
+	res, err := svc.kpuRepo.GetPPWTList(startingPoint)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	_ = w.Write(header)
+
+	for i, re := range res {
+		fmt.Println("Start to scrap, store file to", filePath, re.Kode, i)
+
+		if err := svc.ScrapAllWithStartingPoint(w, criterion, re); err != nil {
 			fmt.Println("Error to scrap", i, re.Kode)
 		}
 	}
@@ -34,13 +96,8 @@ func (svc *service) ScrapAll(criterion model.Criterion, dirPath string) error {
 	return nil
 }
 
-func (svc *service) ScrapAllWithStartingPoint(criterion model.Criterion, startingPoint model.PPWTEntity, filePath string) error {
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
+func (svc *service) ScrapAllWithStartingPoint(w *csv.Writer, criterion model.Criterion, startingPoint model.PPWTEntity) error {
+	var err error
 	if startingPoint.Tingkat != 0 && startingPoint.Parent == nil {
 		startingPoint, err = svc.kpuRepo.GetPPWTParent(startingPoint)
 		if err != nil {
@@ -84,32 +141,6 @@ func (svc *service) ScrapAllWithStartingPoint(criterion model.Criterion, startin
 		wg.Wait()
 		close(hhcwListCh)
 	}()
-
-	w := csv.NewWriter(file)
-	defer w.Flush()
-	header := []string{
-		"Kode",
-		"Provinsi",
-		"Kabupaten",
-		"Kecamatan",
-		"Kelurahan",
-		"TPS",
-		"Suara Paslon 01",
-		"Suara Paslon 02",
-		"Suara Paslon 03",
-		"Jumlah",
-		"Suara Sah",
-		"Suara Tidak Sah",
-		"Jumlah Suara",
-		"DPT", "DPTb",
-		"DPTk",
-		"Jumlah Hak Pilih",
-		"Selisih Suara Semua Paslon dengan Jumlah Suara Sah",
-		"Selisih Suara Sah dan Tidak Sah dengan Total Suara",
-		"Selisih Hak Pilih dengan Jumlah Suara",
-		"Link Web KPU",
-	}
-	_ = w.Write(header)
 
 	for {
 		select {

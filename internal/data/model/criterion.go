@@ -2,12 +2,15 @@ package model
 
 type Criterion struct {
 	DeltaErrThreshold float32
+	SumThreshold      int
 
 	WithDeltaErrThreshold               bool
 	WithInvalidSumOfSuara               bool
 	WithInvalidSumOfPengguna            bool
 	WithNonZeroMismatchSuaraAndPengguna bool
 	WithNonZeroMismatchSuara            bool
+	WithAllIn                           bool
+	WithSumThreshold                    bool
 
 	IgnoreAll bool
 }
@@ -15,6 +18,10 @@ type Criterion struct {
 func (c Criterion) IsMatchFor(hhcw HHCWEntity) bool {
 	sum := hhcw.Chart.Sum()
 	switch {
+	case c.WithSumThreshold && sum > c.SumThreshold:
+		fallthrough
+	case c.WithAllIn && hhcw.Chart.IsAllIn():
+		fallthrough
 	case c.IgnoreAll:
 		fallthrough
 	case c.WithDeltaErrThreshold && hhcw.Chart.GetHighestDeltaPercentage() > c.DeltaErrThreshold:

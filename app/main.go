@@ -35,17 +35,21 @@ func main() {
 	criterion := model.Criterion{
 		//IgnoreAll: true,
 
-		WithNonZeroMismatchSuara: true,
-		WithInvalidSumOfSuara:    true,
+		//WithNonZeroMismatchSuara: true,
+		//WithInvalidSumOfSuara:    true,
 
 		//WithNonZeroMismatchSuaraAndPengguna: true,
 		//WithDeltaErrThreshold: true,
 		//DeltaErrThreshold:     50,
+
+		//WithSumThreshold: true,
+		//SumThreshold:     300,
+		WithAllIn: true,
 	}
 
-	filePath := "export/"
+	filePath := "export/all_in.csv"
 
-	if err := svc.ScrapAll(criterion, filePath); err != nil {
+	if err := svc.ScrapAllCompiled(criterion, filePath); err != nil {
 		fmt.Println(err.Error())
 		return
 	}

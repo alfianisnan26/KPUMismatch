@@ -6,8 +6,8 @@ import (
 )
 
 type Service interface {
-	ScrapPPWTWithStartingPoint(entity model.PPWTEntity) ([]model.PPWTEntity, error)
-	ScrapAll(criterion model.Criterion, filePath string) error
+	ScrapAllSeparated(criterion model.Criterion, dirPath string) error
+	ScrapAllCompiled(criterion model.Criterion, filePath string) error
 }
 
 type Param struct {

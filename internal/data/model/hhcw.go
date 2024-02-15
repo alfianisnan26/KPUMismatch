@@ -39,6 +39,24 @@ func (ci *ChartInfo) String() string {
 	return fmt.Sprintf("01:%d | 02:%d | 03:%d | Sum:%d | Dist:%.2f%%", ci.Paslon01, ci.Paslon02, ci.Paslon03, ci.Sum(), ci.GetHighestDeltaPercentage())
 }
 
+func (ci *ChartInfo) IsAllIn() bool {
+
+	var count int
+	if ci.Paslon01 > 0 {
+		count++
+	}
+
+	if ci.Paslon02 > 0 {
+		count++
+	}
+
+	if ci.Paslon03 > 0 {
+		count++
+	}
+
+	return count == 1
+}
+
 func (ci *ChartInfo) Sum() int {
 	return ci.Paslon01 + ci.Paslon02 + ci.Paslon03
 }
