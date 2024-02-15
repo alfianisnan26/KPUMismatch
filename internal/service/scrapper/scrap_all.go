@@ -34,16 +34,12 @@ var header = []string{
 }
 
 const (
-	SheetSelisihJumlahDataSuaraSah        = "Selisih Jumlah Data Suara Sah"
-	SheetSelisihJumlahSuaraDenganTotal    = "Selisih Jumlah Suara dengan Total"
-	SheetSelisihJumlahHakPilihDenganSuara = "Selisih Jumlah Hak Pilih dengan Suara"
-	SheetTPSAllIn                         = "TPS All In"
+	SheetSelisihData = "Selisih Data"
+	SheetTPSAllIn    = "TPS All In"
 )
 
 var sheet = []string{
-	SheetSelisihJumlahDataSuaraSah,
-	SheetSelisihJumlahSuaraDenganTotal,
-	SheetSelisihJumlahHakPilihDenganSuara,
+	SheetSelisihData,
 	SheetTPSAllIn,
 }
 
@@ -96,21 +92,10 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 				}
 
 				// filter selisih data paslon
-				if sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah; sum != 0 && sah != 0 && sum != sah {
-					if err := svc.writeCell(f, &sheetMap, SheetSelisihJumlahDataSuaraSah, hhwc); err != nil {
-						return err
-					}
-				}
-
-				// filter selisih total
-				if s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total; s+ts != 0 && tot != 0 && s+ts != tot {
-					if err := svc.writeCell(f, &sheetMap, SheetSelisihJumlahSuaraDenganTotal, hhwc); err != nil {
-						return err
-					}
-				}
-				// filter selisih hak pilih
-				if st, pt := hhwc.Administrasi.Suara.Total, hhwc.Administrasi.PenggunaTotal.Jumlah; st != pt {
-					if err := svc.writeCell(f, &sheetMap, SheetSelisihJumlahHakPilihDenganSuara, hhwc); err != nil {
+				s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total
+				st, pt := hhwc.Administrasi.Suara.Total, hhwc.Administrasi.PenggunaTotal.Jumlah
+				if sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah; (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) || (st != pt) {
+					if err := svc.writeCell(f, &sheetMap, SheetSelisihData, hhwc); err != nil {
 						return err
 					}
 				}
@@ -127,11 +112,6 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 		}
 	}
 
-	for _, v := range f.GetSheetMap() {
-		if _, found := sheetMap[v]; !found {
-			f.DeleteSheet(v)
-		}
-	}
 	return f.SaveAs(filePath)
 }
 
