@@ -86,6 +86,7 @@ func (ti HHCWEntity) ToModel(ppwt model.PPWTEntity) (model.HHCWEntity, error) {
 			},
 		},
 		UpdatedAt:          updatedAt,
+		ObtainedAt:         time.Now(),
 		StatusSuara:        ti.StatusSuara,
 		StatusAdministrasi: ti.StatusAdm,
 	}, nil

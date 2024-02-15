@@ -7,14 +7,15 @@ import (
 )
 
 type HHCWEntity struct {
-	Chart              ChartInfo
-	Images             []string
-	Administrasi       AdministrasiInfo
-	UpdatedAt          time.Time
-	StatusSuara        bool
-	StatusAdministrasi bool
+	Chart                 ChartInfo
+	Images                []string
+	Administrasi          AdministrasiInfo
+	UpdatedAt, ObtainedAt time.Time
+	StatusSuara           bool
+	StatusAdministrasi    bool
 
 	Parent *PPWTEntity
+	Link   string
 }
 
 func (hhcw HHCWEntity) String() string {

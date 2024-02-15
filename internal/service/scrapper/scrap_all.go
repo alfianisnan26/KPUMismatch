@@ -102,36 +102,60 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 				subPercentage := subPercentageRaw * 100
 				deltaPercentage := percentage + (((float32(i+1) / float32(len(res)) * 100) - percentage) * subPercentageRaw)
 
+				link, err := svc.kpuRepo.GetPageLink(*hhwc.Parent)
+				if err != nil {
+					return err
+				}
+				hhwc.Link = link
+
+				var store bool
 				// filter selisih data paslon
 				s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total
 				sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah
 				if (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) {
-					if err := svc.writeCell(deltaPercentage, subPercentage, f, &sheetMap, SheetSelisihData, hhwc); err != nil {
-						return err
+					store = true
+					if filePath != "" {
+						if err := svc.writeCell(f, &sheetMap, SheetSelisihData, hhwc); err != nil {
+							return err
+						}
 					}
 				}
 
 				// filter all in
 				if hhwc.Chart.IsAllIn() {
-					if err := svc.writeCell(deltaPercentage, subPercentage, f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
-						return err
+					store = true
+					if filePath != "" {
+						if err := svc.writeCell(f, &sheetMap, SheetTPSAllIn, hhwc); err != nil {
+							return err
+						}
+
 					}
 				}
+
+				if store && svc.databaseRepo != nil {
+					if count%100 == 0 {
+						fmt.Printf("[%03.2f%%][%03.2f%%]\t%d | %s\t| %s\n", deltaPercentage, subPercentage, count, hhwc.String(), hhwc.Link)
+					}
+					if err := svc.databaseRepo.PutReplaceData(hhwc); err != nil {
+						// ignore error
+						fmt.Println(err.Error())
+					}
+				}
+
 			default:
 			}
 
 		}
 	}
 
-	return f.SaveAs(filePath)
+	if filePath != "" {
+		return f.SaveAs(filePath)
+	}
+
+	return nil
 }
 
-func (svc *service) writeCell(p, sp float32, f *excelize.File, sheetmap *map[string]int, sheet string, data model.HHCWEntity) error {
-
-	link, err := svc.kpuRepo.GetPageLink(*data.Parent)
-	if err != nil {
-		return err
-	}
+func (svc *service) writeCell(f *excelize.File, sheetmap *map[string]int, sheet string, data model.HHCWEntity) error {
 
 	var row = make([]interface{}, 0, len(header))
 
@@ -143,11 +167,7 @@ func (svc *service) writeCell(p, sp float32, f *excelize.File, sheetmap *map[str
 	row = append(row, int(math.Abs(float64(data.Chart.Sum()-data.Administrasi.Suara.Sah))))
 	row = append(row, int(math.Abs(float64((data.Administrasi.Suara.Sah+data.Administrasi.Suara.TidakSah)-data.Administrasi.Suara.Total))))
 	row = append(row, int(math.Abs(float64(data.Administrasi.Suara.Total-data.Administrasi.PenggunaTotal.Jumlah))))
-	row = append(row, link)
-
-	if (*sheetmap)[sheet]%100 == 0 {
-		fmt.Printf("[%03.2f%%][%03.2f%%]\t%d | %s\t| %s\n", p, sp, (*sheetmap)[sheet], data.String(), link)
-	}
+	row = append(row, data.Link)
 
 	for col, value := range row {
 		cell := excelize.ToAlphaString(col) + strconv.Itoa((*sheetmap)[sheet]) // Write in first row
