@@ -94,7 +94,8 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 				// filter selisih data paslon
 				s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total
 				st, pt := hhwc.Administrasi.Suara.Total, hhwc.Administrasi.PenggunaTotal.Jumlah
-				if sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah; (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) || (st != pt) {
+				sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah
+				if (sum != 0 && sah != 0 && sum != sah) || (s+ts != 0 && tot != 0 && s+ts != tot) || (st != 0 && pt != 0 && st != pt) {
 					if err := svc.writeCell(f, &sheetMap, SheetSelisihData, hhwc); err != nil {
 						return err
 					}
