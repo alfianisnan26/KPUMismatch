@@ -25,6 +25,7 @@ func main() {
 	postgresTable := os.Getenv("POSTGRES_TABLE")
 	postgresUrl := os.Getenv("POSTGRES_URL")
 	schedulePattern := os.Getenv("SCHEDULE_PATTERN")
+	scrapAll := os.Getenv("SCRAP_ALL") == "True"
 
 	var (
 		cacheRepo dao.Cache
@@ -73,7 +74,7 @@ func main() {
 
 	// first run
 	fn := func() {
-		if err := svc.ScrapAllCompiled(filePath); err != nil {
+		if err := svc.ScrapAllCompiled(filePath, scrapAll); err != nil {
 			fmt.Println(err.Error())
 			return
 		}

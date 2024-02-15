@@ -5,7 +5,7 @@ import (
 )
 
 type Service interface {
-	ScrapAllCompiled(filePath string) error
+	ScrapAllCompiled(filePath string, isScrapAll bool) error
 }
 
 type Param struct {

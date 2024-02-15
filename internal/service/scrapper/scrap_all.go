@@ -43,7 +43,7 @@ var sheet = []string{
 	SheetTPSAllIn,
 }
 
-func (svc *service) ScrapAllCompiled(filePath string) error {
+func (svc *service) ScrapAllCompiled(filePath string, isScrapAll bool) error {
 	startingPoint := model.NewPPWT("0")
 
 	res, err := svc.kpuRepo.GetPPWTList(startingPoint)
@@ -108,7 +108,7 @@ func (svc *service) ScrapAllCompiled(filePath string) error {
 				}
 				hhwc.Link = link
 
-				var store bool
+				var store = isScrapAll
 				// filter selisih data paslon
 				s, ts, tot := hhwc.Administrasi.Suara.Sah, hhwc.Administrasi.Suara.TidakSah, hhwc.Administrasi.Suara.Total
 				sum, sah := hhwc.Chart.Sum(), hhwc.Administrasi.Suara.Sah
