@@ -49,7 +49,7 @@ func main() {
 
 	filePath := "export/sum_all.csv"
 
-	if err := svc.ScrapAllSeparated(criterion, filePath); err != nil {
+	if err := svc.ScrapAllCompiled(criterion, filePath); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
