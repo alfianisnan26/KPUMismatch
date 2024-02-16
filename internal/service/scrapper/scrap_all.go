@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"kawalrealcount/internal/data/model"
-	"math"
 	"strconv"
 	"time"
 )
@@ -159,14 +158,16 @@ func (svc *service) writeCell(f *excelize.File, sheetmap *map[string]int, sheet 
 
 	var row = make([]interface{}, 0, len(header))
 
+	metric := data.Evaluate()
+
 	row = append(row, data.UpdatedAt.Format(time.DateTime), data.Parent.Kode)
 	row = append(row, data.Parent.GetCanonicalName()...)
 	row = append(row, data.Chart.Paslon01, data.Chart.Paslon02, data.Chart.Paslon03, data.Chart.Sum())
 	row = append(row, data.Administrasi.Suara.Sah, data.Administrasi.Suara.TidakSah, data.Administrasi.Suara.Total)
 	row = append(row, data.Administrasi.PemilihDpt.Jumlah, data.Administrasi.PenggunaDptb.Jumlah, data.Administrasi.PenggunaNonDpt.Jumlah, data.Administrasi.PenggunaTotal.Jumlah)
-	row = append(row, int(math.Abs(float64(data.Chart.Sum()-data.Administrasi.Suara.Sah))))
-	row = append(row, int(math.Abs(float64((data.Administrasi.Suara.Sah+data.Administrasi.Suara.TidakSah)-data.Administrasi.Suara.Total))))
-	row = append(row, int(math.Abs(float64(data.Administrasi.Suara.Total-data.Administrasi.PenggunaTotal.Jumlah))))
+	row = append(row, metric.DivChartSumSuaraSah)
+	row = append(row, metric.DivSahTidakSahTotal)
+	row = append(row, metric.DivSuaraPenggunaTotal)
 	row = append(row, data.Link)
 
 	for col, value := range row {

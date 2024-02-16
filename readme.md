@@ -24,6 +24,7 @@ NO_CACHE=True
 REDIS_HOST=localhost:6379
 SQLITE_PATH=db.sqlite3
 POSTGRES_TABLE=kpu_tps
+POSTGRES_TABLE_STATS=kpu_tps_stats
 POSTGRES_URL=postgres://admin:root@localhost:5432/postgres
 SCHEDULE_PATTERN=0 */3 * * *
 SCRAP_ALL=False
@@ -34,6 +35,7 @@ SCRAP_ALL=False
 - `REDIS_HOST`: Redis server host address.
 - `SQLITE_PATH`: Path to the SQLite database file.
 - `POSTGRES_TABLE`: Name of the PostgreSQL table to store data.
+- `POSTGRES_TABLE_STATS`: Name of the PostgreSQL tabe to store worker stats data.
 - `POSTGRES_URL`: URL for connecting to the PostgreSQL database.
 - `SCHEDULE_PATTERN`: Cron-like schedule pattern for periodic execution.
 - `SCRAP_ALL`: To enable scrap all data without check the reconciliation process

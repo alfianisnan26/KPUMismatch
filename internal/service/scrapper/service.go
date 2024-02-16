@@ -2,10 +2,12 @@ package scrapper
 
 import (
 	"kawalrealcount/internal/data/dao"
+	"time"
 )
 
 type Service interface {
 	ScrapAllCompiled(filePath string, isScrapAll bool) error
+	ScrapAllSeedOnly() error
 }
 
 type Param struct {
@@ -13,6 +15,7 @@ type Param struct {
 	KawalPemiluRepo      dao.KawalPemilu
 	DatabaseRepo         dao.Database
 	MaximumRunningThread int
+	ProgressRefreshRate  time.Duration
 }
 
 type service struct {
@@ -20,6 +23,7 @@ type service struct {
 	kawalPemiluRepo      dao.KawalPemilu
 	databaseRepo         dao.Database
 	maximumRunningThread int
+	progressRefreshRate  time.Duration
 }
 
 func New(param Param) Service {
@@ -28,5 +32,6 @@ func New(param Param) Service {
 		kawalPemiluRepo:      param.KawalPemiluRepo,
 		maximumRunningThread: param.MaximumRunningThread,
 		databaseRepo:         param.DatabaseRepo,
+		progressRefreshRate:  param.ProgressRefreshRate,
 	}
 }

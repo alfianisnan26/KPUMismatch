@@ -7,12 +7,12 @@ import (
 	_ "github.com/lib/pq"
 	"kawalrealcount/internal/data/dao"
 	"kawalrealcount/internal/data/model"
-	"math"
 )
 
 type repo struct {
-	db    *sql.DB
-	table string
+	db          *sql.DB
+	tableRecord string
+	tableStat   string
 }
 
 func (r *repo) PutReplaceData(entity model.HHCWEntity) error {
@@ -43,7 +43,8 @@ ON CONFLICT (code)
                   updated_at = EXCLUDED.updated_at,
                   obtained_at = EXCLUDED.obtained_at;`
 
-	_, err := r.db.Exec(fmt.Sprintf(query, r.table),
+	metric := entity.Evaluate()
+	_, err := r.db.Exec(fmt.Sprintf(query, r.tableRecord),
 		entity.Parent.Kode,                        // 1
 		canonical[0],                              // 2
 		canonical[1],                              // 3
@@ -61,13 +62,13 @@ ON CONFLICT (code)
 		entity.Administrasi.PenggunaDptb.Jumlah,   //15
 		entity.Administrasi.PenggunaNonDpt.Jumlah, //16
 		entity.Administrasi.PenggunaTotal.Jumlah,  //17
-		int(math.Abs(float64(entity.Chart.Sum()-entity.Administrasi.Suara.Sah))),                                                   //18
-		int(math.Abs(float64((entity.Administrasi.Suara.Sah+entity.Administrasi.Suara.TidakSah)-entity.Administrasi.Suara.Total))), //19
-		int(math.Abs(float64(entity.Administrasi.PenggunaTotal.Jumlah-entity.Administrasi.Suara.Total))),                           //20
-		entity.Link,                   //21
-		pq.Array(entity.Images),       //22
-		entity.UpdatedAt.UnixMilli(),  //23
-		entity.ObtainedAt.UnixMilli(), //24
+		metric.DivChartSumSuaraSah,                //18
+		metric.DivSahTidakSahTotal,                //19
+		metric.DivSuaraPenggunaTotal,              //20
+		entity.Link,                               //21
+		pq.Array(entity.Images),                   //22
+		entity.UpdatedAt.UTC().UnixMilli(),        //23
+		entity.ObtainedAt.UTC().UnixMilli(),       //24
 	)
 
 	return err
@@ -75,7 +76,8 @@ ON CONFLICT (code)
 
 type Param struct {
 	ConnectionURL string
-	TableName     string
+	TableRecord   string
+	TableStats    string
 }
 
 func New(param Param) (dao.Database, error) {
@@ -92,7 +94,8 @@ func New(param Param) (dao.Database, error) {
 
 	// Return the PostgreSQL repository
 	return &repo{
-		db:    db,
-		table: param.TableName, // Set your PostgreSQL table name here
+		db:          db,
+		tableRecord: param.TableRecord,
+		tableStat:   param.TableStats,
 	}, nil
 }

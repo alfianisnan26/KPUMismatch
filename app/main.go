@@ -22,7 +22,8 @@ func main() {
 	noCache := os.Getenv("NO_CACHE") == "True"
 	redisHost := os.Getenv("REDIS_HOST")
 	sqlitePath := os.Getenv("SQLITE_PATH")
-	postgresTable := os.Getenv("POSTGRES_TABLE")
+	postgresTableRecord := os.Getenv("POSTGRES_TABLE")
+	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
 	postgresUrl := os.Getenv("POSTGRES_URL")
 	schedulePattern := os.Getenv("SCHEDULE_PATTERN")
 	scrapAll := os.Getenv("SCRAP_ALL") == "True"
@@ -51,7 +52,8 @@ func main() {
 
 	psql, err := postgresql.New(postgresql.Param{
 		ConnectionURL: postgresUrl,
-		TableName:     postgresTable,
+		TableRecord:   postgresTableRecord,
+		TableStats:    postgresTableStats,
 	})
 	if err != nil {
 		fmt.Println(err.Error())
@@ -69,17 +71,32 @@ func main() {
 		KawalPemiluRepo: kawalPemiluRepo,
 		DatabaseRepo:    psql,
 
-		MaximumRunningThread: 50,
+		MaximumRunningThread: 15,
+		ProgressRefreshRate:  3 * time.Second,
 	})
 
 	// first run
-	fn := func() {
-		if err := svc.ScrapAllCompiled(filePath, scrapAll); err != nil {
-			fmt.Println(err.Error())
-			return
+	var fn func()
+
+	if scrapAll {
+		fn = func() {
+			if err := svc.ScrapAllSeedOnly(); err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		}
+	} else {
+		fn = func() {
+			if err := svc.ScrapAllCompiled(filePath, false); err != nil {
+				fmt.Println(err.Error())
+				return
+			}
 		}
 	}
+
 	fn()
+
+	_ = schedulePattern
 
 	cronJob := cron.NewWithLocation(time.Local)
 

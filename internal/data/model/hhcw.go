@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 )
@@ -28,12 +29,28 @@ func (hhcw HHCWEntity) String() string {
 	return fmt.Sprintf("%v > %v \t", parent, hhcw.Chart.String())
 }
 
+func (hhcw HHCWEntity) Evaluate() Metric {
+	return Metric{
+		DivChartSumSuaraSah:   int(math.Abs(float64(hhcw.Chart.Sum() - hhcw.Administrasi.Suara.Sah))),
+		DivSahTidakSahTotal:   int(math.Abs(float64((hhcw.Administrasi.Suara.Sah + hhcw.Administrasi.Suara.TidakSah) - hhcw.Administrasi.Suara.Total))),
+		DivSuaraPenggunaTotal: int(math.Abs(float64(hhcw.Administrasi.Suara.Total - hhcw.Administrasi.PenggunaTotal.Jumlah))),
+	}
+}
+
 type ChartInfo struct {
 	Paslon01,
 	Paslon02,
 	Paslon03 int
 
 	highestPercentage *float32
+}
+
+func (ci *ChartInfo) Add(o ChartInfo) ChartInfo {
+	return ChartInfo{
+		Paslon01: ci.Paslon01 + o.Paslon01,
+		Paslon02: ci.Paslon02 + o.Paslon02,
+		Paslon03: ci.Paslon03 + o.Paslon03,
+	}
 }
 
 func (ci *ChartInfo) String() string {
@@ -95,6 +112,14 @@ type JLPData struct {
 	Perempuan int
 }
 
+func (jd JLPData) Add(o JLPData) JLPData {
+	return JLPData{
+		Jumlah:    jd.Jumlah + o.Jumlah,
+		LakiLaki:  jd.LakiLaki + o.LakiLaki,
+		Perempuan: jd.Perempuan + o.Perempuan,
+	}
+}
+
 func (jd JLPData) String() string {
 	return fmt.Sprintf("L:%03d | P:%03d | Sum:%03d | Valid:%v", jd.LakiLaki, jd.Perempuan, jd.Jumlah, jd.IsValid())
 }
@@ -107,6 +132,14 @@ type SuaraData struct {
 	Sah,
 	TidakSah,
 	Total int
+}
+
+func (sd SuaraData) Add(o SuaraData) SuaraData {
+	return SuaraData{
+		Sah:      o.Sah,
+		TidakSah: o.TidakSah,
+		Total:    o.Total,
+	}
 }
 
 func (sd SuaraData) String() string {
