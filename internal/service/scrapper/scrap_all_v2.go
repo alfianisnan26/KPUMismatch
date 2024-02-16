@@ -94,7 +94,7 @@ func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *mod
 	res.Link = link
 
 	stats.Evaluate(res)
-	if err := svc.databaseRepo.PutReplaceData(res); err != nil {
+	if err := svc.databaseRepo.PutReplaceData(res, stats.ID); err != nil {
 		return err
 	}
 

@@ -135,10 +135,6 @@ func (svc *service) ScrapAllCompiled(filePath string, isScrapAll bool) error {
 					if count%100 == 0 {
 						fmt.Printf("[%03.2f%%][%03.2f%%]\t%d | %s\t| %s\n", deltaPercentage, subPercentage, count, hhwc.String(), hhwc.Link)
 					}
-					if err := svc.databaseRepo.PutReplaceData(hhwc); err != nil {
-						// ignore error
-						fmt.Println(err.Error())
-					}
 				}
 
 			default:

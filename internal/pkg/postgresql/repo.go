@@ -15,13 +15,13 @@ type repo struct {
 	tableStat   string
 }
 
-func (r *repo) PutReplaceData(entity model.HHCWEntity) error {
+func (r *repo) PutReplaceData(entity model.HHCWEntity, updateId uint64) error {
 	canonical := entity.Parent.GetCanonicalName()
 	query := `INSERT INTO %s (code, provinsi, kabupaten, kecamatan, kelurahan, tps, total_votes_01, total_votes_02, total_votes_03,
                total_sum_votes, total_valid_votes, total_invalid_votes, total_votes, dpt, dptb, dptk, jml_hak_pilih,
                selisih_suara_paslon_dan_jumlah_sah, selisih_suara_sah_tidak_sah_dan_total, selisih_hak_pilih_dan_jumlah_suara,
-               link, pic_urls, updated_at, obtained_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+               link, pic_urls, updated_at, obtained_at, update_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 ON CONFLICT (code)
     DO UPDATE SET
                   total_votes_01 = EXCLUDED.total_votes_01,
@@ -41,7 +41,8 @@ ON CONFLICT (code)
                   link = EXCLUDED.link,
         		  pic_urls = EXCLUDED.pic_urls,
                   updated_at = EXCLUDED.updated_at,
-                  obtained_at = EXCLUDED.obtained_at;`
+                  obtained_at = EXCLUDED.obtained_at,
+                  update_id = EXCLUDED.update_id;`
 
 	metric := entity.Evaluate()
 	_, err := r.db.Exec(fmt.Sprintf(query, r.tableRecord),
@@ -69,6 +70,7 @@ ON CONFLICT (code)
 		pq.Array(entity.Images),                   //22
 		entity.UpdatedAt.UTC().UnixMilli(),        //23
 		entity.ObtainedAt.UTC().UnixMilli(),       //24
+		updateId,
 	)
 
 	return err

@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+var (
+	jobControl = make(chan struct{}, 1)
+)
+
 func main() {
 
 	filePath := os.Getenv("FILE_PATH")
@@ -94,13 +98,26 @@ func main() {
 		}
 	}
 
-	fn()
-
-	_ = schedulePattern
+	fn() // immediate runonce
 
 	cronJob := cron.NewWithLocation(time.Local)
 
-	if err := cronJob.AddFunc(schedulePattern, fn); err != nil {
+	if err := cronJob.AddFunc(schedulePattern, func() {
+		select {
+		case jobControl <- struct{}{}:
+			defer func() {
+				<-jobControl
+			}()
+
+			// Your job logic goes here
+			fmt.Println("Executing job...")
+			fn()
+
+			fmt.Println("Job execution completed.")
+		default:
+			fmt.Println("Job is already running. Skipping this execution.")
+		}
+	}); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
