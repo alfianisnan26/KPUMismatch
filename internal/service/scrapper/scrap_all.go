@@ -28,7 +28,6 @@ var header = []string{
 	"Jumlah Hak Pilih",
 	"Selisih Suara Semua Paslon dengan Jumlah Suara Sah",
 	"Selisih Suara Sah dan Tidak Sah dengan Total Suara",
-	"Selisih Hak Pilih dengan Jumlah Suara",
 	"Link Web KPU",
 }
 
@@ -163,7 +162,6 @@ func (svc *service) writeCell(f *excelize.File, sheetmap *map[string]int, sheet 
 	row = append(row, data.Administrasi.PemilihDpt.Jumlah, data.Administrasi.PenggunaDptb.Jumlah, data.Administrasi.PenggunaNonDpt.Jumlah, data.Administrasi.PenggunaTotal.Jumlah)
 	row = append(row, metric.DivChartSumSuaraSah)
 	row = append(row, metric.DivSahTidakSahTotal)
-	row = append(row, metric.DivSuaraPenggunaTotal)
 	row = append(row, data.Link)
 
 	for col, value := range row {

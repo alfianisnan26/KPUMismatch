@@ -19,8 +19,8 @@ func (r *repo) PutReplaceData(entity model.HHCWEntity, updateId uint64) error {
 	canonical := entity.Parent.GetCanonicalName()
 	query := `INSERT INTO %s (code, provinsi, kabupaten, kecamatan, kelurahan, tps, total_votes_01, total_votes_02, total_votes_03,
                total_sum_votes, total_valid_votes, total_invalid_votes, total_votes, dpt, dptb, dptk, jml_hak_pilih,
-               selisih_suara_paslon_dan_jumlah_sah, selisih_suara_sah_tidak_sah_dan_total, selisih_hak_pilih_dan_jumlah_suara,
-               link, pic_urls, updated_at, obtained_at, update_id)
+               selisih_suara_paslon_dan_jumlah_sah, selisih_suara_sah_tidak_sah_dan_total,
+               link, pic_urls, updated_at, obtained_at, update_id, all_in)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 ON CONFLICT (code)
     DO UPDATE SET
@@ -37,12 +37,12 @@ ON CONFLICT (code)
                   jml_hak_pilih = EXCLUDED.jml_hak_pilih,
                   selisih_suara_paslon_dan_jumlah_sah = EXCLUDED.selisih_suara_paslon_dan_jumlah_sah,
                   selisih_suara_sah_tidak_sah_dan_total = EXCLUDED.selisih_suara_sah_tidak_sah_dan_total,
-                  selisih_hak_pilih_dan_jumlah_suara = EXCLUDED.selisih_hak_pilih_dan_jumlah_suara,
                   link = EXCLUDED.link,
         		  pic_urls = EXCLUDED.pic_urls,
                   updated_at = EXCLUDED.updated_at,
                   obtained_at = EXCLUDED.obtained_at,
-                  update_id = EXCLUDED.update_id;`
+                  update_id = EXCLUDED.update_id,
+                  all_in = EXCLUDED.all_in;`
 
 	metric := entity.Evaluate()
 	_, err := r.db.Exec(fmt.Sprintf(query, r.tableRecord),
@@ -65,12 +65,12 @@ ON CONFLICT (code)
 		entity.Administrasi.PenggunaTotal.Jumlah,  //17
 		metric.DivChartSumSuaraSah,                //18
 		metric.DivSahTidakSahTotal,                //19
-		metric.DivSuaraPenggunaTotal,              //20
-		entity.Link,                               //21
-		pq.Array(entity.Images),                   //22
-		entity.UpdatedAt.UTC().UnixMilli(),        //23
-		entity.ObtainedAt.UTC().UnixMilli(),       //24
-		updateId,
+		entity.Link,                               //20
+		pq.Array(entity.Images),                   //21
+		entity.UpdatedAt.UTC().UnixMilli(),        //22
+		entity.ObtainedAt.UTC().UnixMilli(),       //23
+		updateId,                                  //24
+		entity.Chart.GetAllInPaslon(),             //25
 	)
 
 	return err

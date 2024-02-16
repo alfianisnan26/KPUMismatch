@@ -7,11 +7,14 @@ import (
 
 type Stats struct {
 	// auto create
-	ID        uint64
-	CreatedAt time.Time
+	ID          uint64
+	CreatedAt   time.Time
+	Contributor string
 
 	// auto update
-	Chart        ChartInfo
+	Chart      ChartInfo
+	AllInChart ChartInfo
+
 	Administrasi AdministrasiInfo
 
 	MostUpdated  time.Time
@@ -21,9 +24,8 @@ type Stats struct {
 	SumMetric     Metric
 	HighestMetric Metric
 
-	TopDivChartSumSuaraSah   string
-	TopDivSahTidakSahTotal   string
-	TopDivSuaraPenggunaTotal string
+	TopDivChartSumSuaraSah string
+	TopDivSahTidakSahTotal string
 
 	TotalRecord int
 
@@ -48,7 +50,7 @@ func (s *Stats) Update(progress float32, estTime time.Duration, startTime time.T
 	s.ProcessingTime = s.LastProgressUpdate.Sub(startTime)
 }
 
-func (s *Stats) Finalize(startTime time.Time) {
+func (s *Stats) Finalize(startTime time.Time, count int) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -56,15 +58,30 @@ func (s *Stats) Finalize(startTime time.Time) {
 	s.Progress = 100
 	s.EstimateTime = 0
 	s.ProcessingTime = s.FinishedAt.Sub(startTime)
+	s.TotalRecord = count
 }
 
-func (s *Stats) Evaluate(entity HHCWEntity) {
+func (s *Stats) Evaluate(entity HHCWEntity, count int) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.TotalRecord++
+	s.TotalRecord = count
 
 	s.Chart = s.Chart.Add(entity.Chart)
+	var allInChart ChartInfo
+
+	allIn := entity.Chart.GetAllInPaslon()
+	switch allIn {
+	case 1:
+		allInChart.Paslon01 = 1
+	case 2:
+		allInChart.Paslon02 = 1
+	case 3:
+		allInChart.Paslon03 = 1
+	default:
+	}
+
+	s.AllInChart = s.AllInChart.Add(allInChart)
 	s.Administrasi.Suara = s.Administrasi.Suara.Add(entity.Administrasi.Suara)
 	s.Administrasi.PenggunaTotal = s.Administrasi.PenggunaTotal.Add(entity.Administrasi.PenggunaTotal)
 	s.Administrasi.PemilihDpt = s.Administrasi.PemilihDpt.Add(entity.Administrasi.PemilihDpt)
@@ -90,10 +107,6 @@ func (s *Stats) Evaluate(entity HHCWEntity) {
 
 	if s.HighestMetric.DivSahTidakSahTotal == m.DivSahTidakSahTotal {
 		s.TopDivSahTidakSahTotal = entity.Parent.Kode
-	}
-
-	if s.HighestMetric.DivSuaraPenggunaTotal == m.DivSuaraPenggunaTotal {
-		s.TopDivSuaraPenggunaTotal = entity.Parent.Kode
 	}
 
 }

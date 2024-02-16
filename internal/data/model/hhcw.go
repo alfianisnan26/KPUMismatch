@@ -31,9 +31,8 @@ func (hhcw HHCWEntity) String() string {
 
 func (hhcw HHCWEntity) Evaluate() Metric {
 	return Metric{
-		DivChartSumSuaraSah:   int(math.Abs(float64(hhcw.Chart.Sum() - hhcw.Administrasi.Suara.Sah))),
-		DivSahTidakSahTotal:   int(math.Abs(float64((hhcw.Administrasi.Suara.Sah + hhcw.Administrasi.Suara.TidakSah) - hhcw.Administrasi.Suara.Total))),
-		DivSuaraPenggunaTotal: int(math.Abs(float64(hhcw.Administrasi.Suara.Total - hhcw.Administrasi.PenggunaTotal.Jumlah))),
+		DivChartSumSuaraSah: int(math.Abs(float64(hhcw.Chart.Sum() - hhcw.Administrasi.Suara.Sah))),
+		DivSahTidakSahTotal: int(math.Abs(float64((hhcw.Administrasi.Suara.Sah + hhcw.Administrasi.Suara.TidakSah) - hhcw.Administrasi.Suara.Total))),
 	}
 }
 
@@ -58,21 +57,7 @@ func (ci *ChartInfo) String() string {
 }
 
 func (ci *ChartInfo) IsAllIn() bool {
-
-	var count int
-	if ci.Paslon01 > 0 {
-		count++
-	}
-
-	if ci.Paslon02 > 0 {
-		count++
-	}
-
-	if ci.Paslon03 > 0 {
-		count++
-	}
-
-	return count == 1
+	return ci.GetAllInPaslon() != 0
 }
 
 func (ci *ChartInfo) Sum() int {
@@ -95,6 +80,31 @@ func (ci *ChartInfo) GetHighestDeltaPercentage() float32 {
 	percentage := float32(highest) / float32(total) * 100
 	ci.highestPercentage = &percentage
 	return *ci.highestPercentage
+}
+
+func (ci *ChartInfo) GetAllInPaslon() int {
+	var count int
+	var idx int
+	if ci.Paslon01 > 0 {
+		count++
+		idx = 1
+	}
+
+	if ci.Paslon02 > 0 {
+		count++
+		idx = 2
+	}
+
+	if ci.Paslon03 > 0 {
+		count++
+		idx = 3
+	}
+
+	if count != 1 {
+		return 0
+	}
+
+	return idx
 }
 
 type AdministrasiInfo struct {
@@ -136,9 +146,9 @@ type SuaraData struct {
 
 func (sd SuaraData) Add(o SuaraData) SuaraData {
 	return SuaraData{
-		Sah:      o.Sah,
-		TidakSah: o.TidakSah,
-		Total:    o.Total,
+		Sah:      sd.Sah + o.Sah,
+		TidakSah: sd.TidakSah + o.TidakSah,
+		Total:    sd.Total + o.Total,
 	}
 }
 

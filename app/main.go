@@ -2,23 +2,25 @@ package main
 
 import (
 	"fmt"
-	"github.com/robfig/cron"
 	"kawalrealcount/internal/data/dao"
+	"kawalrealcount/internal/data/model"
 	"kawalrealcount/internal/pkg/httpclient/kawalpemilu"
 	"kawalrealcount/internal/pkg/httpclient/kpu"
 	"kawalrealcount/internal/pkg/postgresql"
 	"kawalrealcount/internal/pkg/redis"
 	"kawalrealcount/internal/pkg/sqlite"
+	"kawalrealcount/internal/service/contributor"
 	"kawalrealcount/internal/service/scrapper"
 	"os"
-	"os/signal"
-	"syscall"
+	"strconv"
 	"time"
 )
 
 var (
 	jobControl = make(chan struct{}, 1)
 )
+
+const secret = "MUST MANUALLY SET ON EVERY BUILD"
 
 func main() {
 
@@ -29,8 +31,30 @@ func main() {
 	postgresTableRecord := os.Getenv("POSTGRES_TABLE")
 	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
 	postgresUrl := os.Getenv("POSTGRES_URL")
-	schedulePattern := os.Getenv("SCHEDULE_PATTERN")
+	cooldownMinutes, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES"))
 	scrapAll := os.Getenv("SCRAP_ALL") == "True"
+
+	contributionToken := os.Getenv("CONTRIBUTION_TOKEN")
+
+	var contributorData model.ContributorData
+	if contributionToken != "" {
+		contributionSvc, err := contributor.New(contributor.Param{
+			Secret: secret,
+		})
+		if err == nil {
+			contributorData, err = contributionSvc.FetchContributionData(contributionToken)
+			if err == nil {
+				redisHost = contributorData.RedisHost
+				postgresTableRecord = contributorData.PostgresTableRecord
+				postgresTableStats = contributorData.PostgresTableStats
+				postgresUrl = contributorData.PostgresUrl
+			} else {
+				fmt.Println(err.Error())
+			}
+		} else {
+			fmt.Println(err.Error())
+		}
+	}
 
 	var (
 		cacheRepo dao.Cache
@@ -71,12 +95,13 @@ func main() {
 	})
 
 	svc := scrapper.New(scrapper.Param{
+		Contributor:     contributorData,
 		KPURepo:         kpuRepo,
 		KawalPemiluRepo: kawalPemiluRepo,
 		DatabaseRepo:    psql,
 
 		MaximumRunningThread: 15,
-		ProgressRefreshRate:  3 * time.Second,
+		ProgressRefreshRate:  5 * time.Second,
 	})
 
 	// first run
@@ -98,38 +123,17 @@ func main() {
 		}
 	}
 
-	fn() // immediate runonce
+	for {
 
-	cronJob := cron.NewWithLocation(time.Local)
+		fn()
 
-	if err := cronJob.AddFunc(schedulePattern, func() {
-		select {
-		case jobControl <- struct{}{}:
-			defer func() {
-				<-jobControl
-			}()
-
-			// Your job logic goes here
-			fmt.Println("Executing job...")
-			fn()
-
-			fmt.Println("Job execution completed.")
-		default:
-			fmt.Println("Job is already running. Skipping this execution.")
+		if cooldownMinutes == 0 {
+			return
 		}
-	}); err != nil {
-		fmt.Println(err.Error())
-		return
+
+		fmt.Printf("Sleeping for %d minutes", cooldownMinutes)
+
+		time.Sleep(time.Minute * time.Duration(cooldownMinutes))
 	}
 
-	cronJob.Start()
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	<-sigs
-
-	cronJob.Stop()
-
-	os.Exit(0)
 }

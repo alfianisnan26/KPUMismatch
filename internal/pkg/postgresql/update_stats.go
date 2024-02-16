@@ -21,23 +21,22 @@ func (r *repo) UpdateStats(stats *model.Stats) error {
 					jml_hak_pilih = $11,
 					count_div_chart_sum_suara_sah = $12,
 					count_div_sah_tidak_sah_total = $13,
-					count_div_suara_pengguna_total = $14,
-					sum_div_chart_sum_suara_sah = $15,
-					sum_div_sah_tidak_sah_total = $16,
-					sum_div_suara_pengguna_total = $17,
-					highest_div_chart_sum_suara_sah = $18,
-					highest_div_sah_tidak_sah_total = $19,
-					highest_div_suara_pengguna_total = $20,
-					top_div_chart_sum_suara_sah = $21,
-					top_div_sah_tidak_sah_total = $22,
-					top_div_suara_pengguna_total = $23,
-					total_record = $24,
-					progress = $25,
-					estimate_time = $26,
-					last_progress_update = $27,
-					processing_time = $28,
-					finished_at = $29
-				WHERE id = $30;`
+					sum_div_chart_sum_suara_sah = $14,
+					sum_div_sah_tidak_sah_total = $15,
+					highest_div_chart_sum_suara_sah = $16,
+					highest_div_sah_tidak_sah_total = $17,
+					top_div_chart_sum_suara_sah = $18,
+					top_div_sah_tidak_sah_total = $19,
+					total_record = $20,
+					progress = $21,
+					estimate_time = $22,
+					last_progress_update = $23,
+					processing_time = $24,
+					finished_at = $25,
+					total_all_in_01 = $26,
+					total_all_in_02 = $27,
+					total_all_in_03 = $28
+				WHERE id = $29;`
 
 	var finishedAt int64
 	if !stats.FinishedAt.IsZero() {
@@ -58,23 +57,22 @@ func (r *repo) UpdateStats(stats *model.Stats) error {
 		stats.Administrasi.PenggunaTotal.Jumlah,    //11
 		stats.CountMetric.DivChartSumSuaraSah,      //12
 		stats.CountMetric.DivSahTidakSahTotal,      //13
-		stats.CountMetric.DivSuaraPenggunaTotal,    //14
-		stats.SumMetric.DivChartSumSuaraSah,        //15
-		stats.SumMetric.DivSahTidakSahTotal,        //16
-		stats.SumMetric.DivSuaraPenggunaTotal,      //17
-		stats.HighestMetric.DivChartSumSuaraSah,    //18
-		stats.HighestMetric.DivSahTidakSahTotal,    //19
-		stats.HighestMetric.DivSuaraPenggunaTotal,  //20
-		stats.TopDivChartSumSuaraSah,               //21
-		stats.TopDivSahTidakSahTotal,               //22
-		stats.TopDivSuaraPenggunaTotal,             //23
-		stats.TotalRecord,                          //24
-		stats.Progress,                             //25
-		stats.EstimateTime.Milliseconds(),          //26
-		stats.LastProgressUpdate.UTC().UnixMilli(), //27
-		stats.ProcessingTime.Milliseconds(),        //28
-		finishedAt,                                 //29
-		stats.ID,                                   //30
+		stats.SumMetric.DivChartSumSuaraSah,        //14
+		stats.SumMetric.DivSahTidakSahTotal,        //15
+		stats.HighestMetric.DivChartSumSuaraSah,    //16
+		stats.HighestMetric.DivSahTidakSahTotal,    //17
+		stats.TopDivChartSumSuaraSah,               //18
+		stats.TopDivSahTidakSahTotal,               //19
+		stats.TotalRecord,                          //20
+		stats.Progress,                             //21
+		stats.EstimateTime.Milliseconds(),          //22
+		stats.LastProgressUpdate.UTC().UnixMilli(), //23
+		stats.ProcessingTime.Milliseconds(),        //24
+		finishedAt,                                 //25
+		stats.AllInChart.Paslon01,                  //26
+		stats.AllInChart.Paslon02,                  //27
+		stats.AllInChart.Paslon03,                  //28
+		stats.ID,                                   //29
 	)
 
 	return err

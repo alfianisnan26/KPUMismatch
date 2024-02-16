@@ -9,9 +9,10 @@ import (
 func (r *repo) InsertStats(stats *model.Stats) error {
 	stats.CreatedAt = time.Now()
 
-	query := fmt.Sprintf(`INSERT INTO %s (created_at) VALUES ($1) RETURNING id;`, r.tableStat)
+	query := fmt.Sprintf(`INSERT INTO %s (created_at, contributor) VALUES ($1, $2) RETURNING id;`, r.tableStat)
 	if err := r.db.QueryRow(query,
 		stats.CreatedAt.UTC().UnixMilli(),
+		stats.Contributor,
 	).Scan(&(stats.ID)); err != nil {
 		return err
 	}

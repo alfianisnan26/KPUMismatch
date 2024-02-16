@@ -12,7 +12,9 @@ const targetTotalTps = 823236
 func (svc *service) ScrapAllSeedOnly() error {
 
 	var (
-		stats model.Stats
+		stats = model.Stats{
+			Contributor: svc.contributor.Email,
+		}
 	)
 
 	if err := svc.databaseRepo.InsertStats(&stats); err != nil {
@@ -64,7 +66,7 @@ LoopFor:
 			go func(ppwt model.PPWTEntity, link string, count int, stats *model.Stats) {
 				defer sm.Release()
 
-				err := svc.processPpwt(ppwt, link, stats)
+				err := svc.processPpwt(ppwt, link, stats, count)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -76,11 +78,11 @@ LoopFor:
 		}
 	}
 
-	stats.Finalize(start)
+	stats.Finalize(start, count)
 	return svc.databaseRepo.UpdateStats(&stats)
 }
 
-func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *model.Stats) error {
+func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *model.Stats, count int) error {
 	res, err := svc.kpuRepo.GetHHCWInfo(entity)
 	if err != nil {
 		return err
@@ -93,7 +95,7 @@ func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *mod
 
 	res.Link = link
 
-	stats.Evaluate(res)
+	stats.Evaluate(res, count)
 	if err := svc.databaseRepo.PutReplaceData(res, stats.ID); err != nil {
 		return err
 	}
