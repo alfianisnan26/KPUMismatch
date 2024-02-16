@@ -35,8 +35,13 @@ func (r *repo) UpdateStats(stats *model.Stats) error {
 					finished_at = $25,
 					total_all_in_01 = $26,
 					total_all_in_02 = $27,
-					total_all_in_03 = $28
-				WHERE id = $29;`
+					total_all_in_03 = $28,
+				    total_clear_votes_01 = $29
+				    total_clear_votes_02 = $30
+				    total_clear_votes_03 = $31
+				    total_non_null_record = $32
+				    total_valid_non_null_record = $33
+				WHERE id = $34;`
 
 	var finishedAt int64
 	if !stats.FinishedAt.IsZero() {
@@ -72,7 +77,12 @@ func (r *repo) UpdateStats(stats *model.Stats) error {
 		stats.AllInChart.Paslon01,                  //26
 		stats.AllInChart.Paslon02,                  //27
 		stats.AllInChart.Paslon03,                  //28
-		stats.ID,                                   //29
+		stats.ClearChart.Paslon01,                  //29
+		stats.ClearChart.Paslon02,                  //30
+		stats.ClearChart.Paslon03,                  //31
+		stats.TotalNonNullRecord,                   //32
+		stats.TotalValidNonNullRecord,              //33
+		stats.ID,                                   //34
 	)
 
 	return err

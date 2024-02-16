@@ -13,6 +13,7 @@ type Stats struct {
 
 	// auto update
 	Chart      ChartInfo
+	ClearChart ChartInfo
 	AllInChart ChartInfo
 
 	Administrasi AdministrasiInfo
@@ -27,7 +28,9 @@ type Stats struct {
 	TopDivChartSumSuaraSah string
 	TopDivSahTidakSahTotal string
 
-	TotalRecord int
+	TotalRecord             int
+	TotalNonNullRecord      int
+	TotalValidNonNullRecord int
 
 	Progress           float32
 	EstimateTime       time.Duration
@@ -40,7 +43,7 @@ type Stats struct {
 	mutex sync.Mutex
 }
 
-func (s *Stats) Update(progress float32, estTime time.Duration, startTime time.Time) {
+func (s *Stats) Update(progress float32, estTime time.Duration, startTime time.Time, count int) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -48,6 +51,7 @@ func (s *Stats) Update(progress float32, estTime time.Duration, startTime time.T
 	s.EstimateTime = estTime
 	s.LastProgressUpdate = time.Now()
 	s.ProcessingTime = s.LastProgressUpdate.Sub(startTime)
+	s.TotalRecord = count
 }
 
 func (s *Stats) Finalize(startTime time.Time, count int) {
@@ -61,11 +65,9 @@ func (s *Stats) Finalize(startTime time.Time, count int) {
 	s.TotalRecord = count
 }
 
-func (s *Stats) Evaluate(entity HHCWEntity, count int) {
+func (s *Stats) Evaluate(entity HHCWEntity) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	s.TotalRecord = count
 
 	s.Chart = s.Chart.Add(entity.Chart)
 	var allInChart ChartInfo
@@ -107,6 +109,15 @@ func (s *Stats) Evaluate(entity HHCWEntity, count int) {
 
 	if s.HighestMetric.DivSahTidakSahTotal == m.DivSahTidakSahTotal {
 		s.TopDivSahTidakSahTotal = entity.Parent.Kode
+	}
+
+	if entity.IsNonNullVote() {
+		s.TotalNonNullRecord++
+
+		if entity.IsValidVote() {
+			s.TotalValidNonNullRecord++
+			s.ClearChart.Add(entity.Chart)
+		}
 	}
 
 }

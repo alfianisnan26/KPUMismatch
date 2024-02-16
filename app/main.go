@@ -101,7 +101,7 @@ func main() {
 		DatabaseRepo:    psql,
 
 		MaximumRunningThread: 15,
-		ProgressRefreshRate:  5 * time.Second,
+		ProgressRefreshRate:  time.Minute,
 	})
 
 	// first run

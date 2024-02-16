@@ -36,6 +36,14 @@ func (hhcw HHCWEntity) Evaluate() Metric {
 	}
 }
 
+func (hhcw HHCWEntity) IsNonNullVote() bool {
+	return hhcw.Chart.Sum() != 0 && hhcw.Administrasi.Suara.Total != 0 && hhcw.Administrasi.Suara.IsValid()
+}
+
+func (hhcw HHCWEntity) IsValidVote() bool {
+	return hhcw.Chart.Sum() == hhcw.Administrasi.Suara.Sah
+}
+
 type ChartInfo struct {
 	Paslon01,
 	Paslon02,

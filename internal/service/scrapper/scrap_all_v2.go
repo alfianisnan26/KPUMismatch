@@ -52,7 +52,7 @@ LoopFor:
 
 				percentage := float32(count) / float32(targetTotalTps) * 100
 				est := estimateTime(start, percentage, 100)
-				stats.Update(percentage, est, start)
+				stats.Update(percentage, est, start, count)
 
 				if err := svc.databaseRepo.UpdateStats(&stats); err != nil {
 					fmt.Println(err)
@@ -63,16 +63,16 @@ LoopFor:
 			}
 
 			sm.Acquire()
-			go func(ppwt model.PPWTEntity, link string, count int, stats *model.Stats) {
+			go func(ppwt model.PPWTEntity, link string, stats *model.Stats) {
 				defer sm.Release()
 
-				err := svc.processPpwt(ppwt, link, stats, count)
+				err := svc.processPpwt(ppwt, link, stats)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
 				}
 
-			}(ppwt, link, count, &stats)
+			}(ppwt, link, &stats)
 
 			count++
 		}
@@ -82,7 +82,7 @@ LoopFor:
 	return svc.databaseRepo.UpdateStats(&stats)
 }
 
-func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *model.Stats, count int) error {
+func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *model.Stats) error {
 	res, err := svc.kpuRepo.GetHHCWInfo(entity)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (svc *service) processPpwt(entity model.PPWTEntity, link string, stats *mod
 
 	res.Link = link
 
-	stats.Evaluate(res, count)
+	stats.Evaluate(res)
 	if err := svc.databaseRepo.PutReplaceData(res, stats.ID); err != nil {
 		return err
 	}
