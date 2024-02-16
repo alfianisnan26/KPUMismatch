@@ -36,10 +36,10 @@ func (r *repo) UpdateStats(stats *model.Stats) error {
 					total_all_in_01 = $26,
 					total_all_in_02 = $27,
 					total_all_in_03 = $28,
-				    total_clear_votes_01 = $29
-				    total_clear_votes_02 = $30
-				    total_clear_votes_03 = $31
-				    total_non_null_record = $32
+				    total_clear_votes_01 = $29,
+				    total_clear_votes_02 = $30,
+				    total_clear_votes_03 = $31,
+				    total_non_null_record = $32,
 				    total_valid_non_null_record = $33
 				WHERE id = $34;`
 

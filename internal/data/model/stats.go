@@ -18,9 +18,6 @@ type Stats struct {
 
 	Administrasi AdministrasiInfo
 
-	MostUpdated  time.Time
-	LeastUpdated time.Time
-
 	CountMetric   Metric
 	SumMetric     Metric
 	HighestMetric Metric
@@ -90,12 +87,6 @@ func (s *Stats) Evaluate(entity HHCWEntity) {
 	s.Administrasi.PenggunaDpt = s.Administrasi.PenggunaDpt.Add(entity.Administrasi.PenggunaDpt)
 	s.Administrasi.PenggunaDptb = s.Administrasi.PenggunaDptb.Add(entity.Administrasi.PenggunaDptb)
 	s.Administrasi.PenggunaNonDpt = s.Administrasi.PenggunaNonDpt.Add(entity.Administrasi.PenggunaNonDpt)
-	if v := entity.UpdatedAt; v.After(s.MostUpdated) {
-		s.MostUpdated = v
-	}
-	if v := entity.UpdatedAt; s.LeastUpdated.IsZero() || v.Before(s.LeastUpdated) {
-		s.LeastUpdated = v
-	}
 
 	m := entity.Evaluate()
 
@@ -116,7 +107,7 @@ func (s *Stats) Evaluate(entity HHCWEntity) {
 
 		if entity.IsValidVote() {
 			s.TotalValidNonNullRecord++
-			s.ClearChart.Add(entity.Chart)
+			s.ClearChart = s.ClearChart.Add(entity.Chart)
 		}
 	}
 
