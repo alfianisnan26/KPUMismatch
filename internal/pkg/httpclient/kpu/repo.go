@@ -99,7 +99,7 @@ func (r repo) GetPPWTList(req model.PPWTEntity) ([]model.PPWTEntity, error) {
 		return nil, err
 	}
 
-	body, err := r.cacheRepo.Get(endpoint, time.Hour*24*7, r.jsonRequest)
+	body, err := r.cacheRepo.Get(endpoint, time.Hour*24, r.jsonRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -117,13 +117,13 @@ func (r repo) GetPPWTList(req model.PPWTEntity) ([]model.PPWTEntity, error) {
 	return data, nil
 }
 
-func (r repo) GetHHCWInfo(req model.PPWTEntity) (model.HHCWEntity, error) {
+func (r repo) GetHHCWInfo(req *model.PPWTEntity) (model.HHCWEntity, error) {
 	endpoint, err := url.JoinPath(host, hhcwInfoPath, req.GetCanonicalCode()+stdJsonExtension)
 	if err != nil {
 		return model.HHCWEntity{}, err
 	}
 
-	body, err := r.cacheRepo.Get(endpoint, 3*time.Hour, r.jsonRequest)
+	body, err := r.cacheRepo.Get(endpoint, 15*time.Minute, r.jsonRequest)
 	if err != nil {
 		return model.HHCWEntity{}, err
 	}
@@ -136,7 +136,36 @@ func (r repo) GetHHCWInfo(req model.PPWTEntity) (model.HHCWEntity, error) {
 	return respData.ToModel(req)
 }
 
+func (r repo) GetHHWCNoCacheInfo(req *model.PPWTEntity) (model.HHCWEntity, error) {
+	endpoint, err := url.JoinPath(host, hhcwInfoPath, req.GetCanonicalCode()+stdJsonExtension)
+	if err != nil {
+		return model.HHCWEntity{}, err
+	}
+
+	body, err := r.jsonRequest(endpoint)
+	if err != nil {
+		return model.HHCWEntity{}, nil
+	}
+
+	var respData dto2.HHCWEntity
+	if err := json.Unmarshal(body, &respData); err != nil {
+		return model.HHCWEntity{}, err
+	}
+
+	return respData.ToModel(req)
+}
+
 type noCache struct{}
+
+func (n noCache) GetHHCW(key string) (model.HHCWEntity, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (n noCache) PutHHCW(key string, data model.HHCWEntity, expiry time.Duration) error {
+	//TODO implement me
+	panic("implement me")
+}
 
 func (n noCache) Get(key string, expiry time.Duration, fallback func(string) ([]byte, error)) ([]byte, error) {
 	return fallback(key)

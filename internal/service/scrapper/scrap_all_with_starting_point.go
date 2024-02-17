@@ -28,7 +28,7 @@ func (svc *service) ScrapAllWithStartingPoint(hhcwListCh chan<- model.HHCWEntity
 				defer sm.Release()
 				defer wg.Done()
 
-				res, err := svc.kpuRepo.GetHHCWInfo(entity)
+				res, err := svc.kpuRepo.GetHHCWInfo(&entity)
 				if err != nil {
 					return
 				}

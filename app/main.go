@@ -8,9 +8,9 @@ import (
 	"kawalrealcount/internal/pkg/httpclient/kpu"
 	"kawalrealcount/internal/pkg/postgresql"
 	"kawalrealcount/internal/pkg/redis"
-	"kawalrealcount/internal/pkg/sqlite"
 	"kawalrealcount/internal/service/contributor"
 	"kawalrealcount/internal/service/scrapper"
+	"kawalrealcount/internal/service/scrapper_v2"
 	"os"
 	"strconv"
 	"time"
@@ -27,9 +27,12 @@ func main() {
 	filePath := os.Getenv("FILE_PATH")
 	noCache := os.Getenv("NO_CACHE") == "True"
 	redisHost := os.Getenv("REDIS_HOST")
-	sqlitePath := os.Getenv("SQLITE_PATH")
 	postgresTableRecord := os.Getenv("POSTGRES_TABLE")
 	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
+	postgresTableWebStats := os.Getenv("POSTGRES_TABLE_WEB_STATS")
+	maximumRunningThread, _ := strconv.Atoi(os.Getenv("MAX_RUNNING_THREAD"))
+	batchInsertLength, _ := strconv.Atoi(os.Getenv("BATCH_INSERT_LENGTH"))
+
 	postgresUrl := os.Getenv("POSTGRES_URL")
 	cooldownMinutes, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES"))
 	scrapAll := os.Getenv("SCRAP_ALL") == "True"
@@ -69,22 +72,15 @@ func main() {
 		}
 	}
 
-	if cacheRepo == nil {
-		cacheRepo, err = sqlite.New(sqlite.Param{
-			FilePath: sqlitePath,
-		})
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-	}
-
 	psql, err := postgresql.New(postgresql.Param{
 		ConnectionURL: postgresUrl,
 		TableRecord:   postgresTableRecord,
 		TableStats:    postgresTableStats,
+		TableWebStats: postgresTableWebStats,
 	})
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
 
 	kpuRepo := kpu.New(kpu.Param{
@@ -100,8 +96,20 @@ func main() {
 		KawalPemiluRepo: kawalPemiluRepo,
 		DatabaseRepo:    psql,
 
-		MaximumRunningThread: 15,
-		ProgressRefreshRate:  time.Minute,
+		MaximumRunningThread: maximumRunningThread,
+		BatchInsertLength:    batchInsertLength,
+	})
+
+	svcv2 := scrapper_v2.New(scrapper_v2.Param{
+		KPURepo:                    kpuRepo,
+		CacheRepo:                  cacheRepo,
+		DatabaseRepo:               psql,
+		MaximumRunningThread:       maximumRunningThread,
+		BatchInsertLength:          batchInsertLength,
+		Contributor:                contributorData,
+		ValidRecordExpiry:          time.Hour * 3,
+		NotNullInvalidRecordExpiry: time.Minute * 30,
+		NullRecordExpiry:           time.Minute * 10,
 	})
 
 	// first run
@@ -109,8 +117,9 @@ func main() {
 
 	if scrapAll {
 		fn = func() {
-			if err := svc.ScrapAllSeedOnly(); err != nil {
-				fmt.Println(err.Error())
+			err := svcv2.ScrapAll()
+			if err != nil {
+				fmt.Println(err)
 				return
 			}
 		}

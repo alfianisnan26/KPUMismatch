@@ -39,14 +39,14 @@ type HHCWEntity struct {
 	StatusAdm   bool        `json:"status_adm"`
 }
 
-func (ti HHCWEntity) ToModel(ppwt model.PPWTEntity) (model.HHCWEntity, error) {
+func (ti HHCWEntity) ToModel(ppwt *model.PPWTEntity) (model.HHCWEntity, error) {
 	updatedAt, err := time.Parse(time.DateTime, ti.Ts)
 	if err != nil {
 		return model.HHCWEntity{}, err
 	}
 
 	return model.HHCWEntity{
-		Parent: &ppwt,
+		Parent: ppwt,
 		Chart: model.ChartInfo{
 			Paslon01: ti.Chart.Paslon01,
 			Paslon02: ti.Chart.Paslon02,

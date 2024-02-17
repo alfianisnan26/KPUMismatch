@@ -3,12 +3,13 @@ package scrapper
 import (
 	"kawalrealcount/internal/data/dao"
 	"kawalrealcount/internal/data/model"
-	"time"
 )
 
 type Service interface {
 	ScrapAllCompiled(filePath string, isScrapAll bool) error
-	ScrapAllSeedOnly() error
+	ScrapAllAsyncSeedOnlyByMap(map[string]*model.PPWTEntity) error
+	ScrapAllSyncSeedOnlyByMap(map[string]*model.PPWTEntity) error
+	GatherAllPPWTMap() (map[string]*model.PPWTEntity, error)
 }
 
 type Param struct {
@@ -16,8 +17,8 @@ type Param struct {
 	KawalPemiluRepo      dao.KawalPemilu
 	DatabaseRepo         dao.Database
 	MaximumRunningThread int
-	ProgressRefreshRate  time.Duration
 	Contributor          model.ContributorData
+	BatchInsertLength    int
 }
 
 type service struct {
@@ -25,17 +26,17 @@ type service struct {
 	kawalPemiluRepo      dao.KawalPemilu
 	databaseRepo         dao.Database
 	maximumRunningThread int
-	progressRefreshRate  time.Duration
 	contributor          model.ContributorData
+	batchInsertLength    int
 }
 
-func New(param Param) Service {
+func New(param Param) *service {
 	return &service{
 		kpuRepo:              param.KPURepo,
 		kawalPemiluRepo:      param.KawalPemiluRepo,
 		maximumRunningThread: param.MaximumRunningThread,
 		databaseRepo:         param.DatabaseRepo,
-		progressRefreshRate:  param.ProgressRefreshRate,
 		contributor:          param.Contributor,
+		batchInsertLength:    param.BatchInsertLength,
 	}
 }

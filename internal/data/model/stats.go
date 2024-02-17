@@ -1,13 +1,11 @@
 package model
 
 import (
-	"sync"
 	"time"
 )
 
 type Stats struct {
 	// auto create
-	ID          uint64
 	CreatedAt   time.Time
 	Contributor string
 
@@ -25,46 +23,23 @@ type Stats struct {
 	TopDivChartSumSuaraSah string
 	TopDivSahTidakSahTotal string
 
-	TotalRecord             int
 	TotalNonNullRecord      int
 	TotalValidNonNullRecord int
 
-	Progress           float32
-	EstimateTime       time.Duration
-	LastProgressUpdate time.Time
+	WebStast *WebStats
 
 	// final value
-	ProcessingTime time.Duration
-	FinishedAt     time.Time
-
-	mutex sync.Mutex
+	FinishedAt time.Time
 }
 
-func (s *Stats) Update(progress float32, estTime time.Duration, startTime time.Time, count int) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.Progress = progress
-	s.EstimateTime = estTime
-	s.LastProgressUpdate = time.Now()
-	s.ProcessingTime = s.LastProgressUpdate.Sub(startTime)
-	s.TotalRecord = count
+func (s *Stats) Finalize() {
+	s.FinishedAt = s.WebStast.Timestamp
+	s.WebStast.Percentage = 100
+	s.WebStast.Estimation = 0
 }
 
-func (s *Stats) Finalize(startTime time.Time, count int) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.FinishedAt = time.Now()
-	s.Progress = 100
-	s.EstimateTime = 0
-	s.ProcessingTime = s.FinishedAt.Sub(startTime)
-	s.TotalRecord = count
-}
-
-func (s *Stats) Evaluate(entity HHCWEntity) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *Stats) Evaluate(entity *HHCWEntity) {
+	s.WebStast.DataCount++
 
 	s.Chart = s.Chart.Add(entity.Chart)
 	var allInChart ChartInfo

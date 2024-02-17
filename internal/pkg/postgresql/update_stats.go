@@ -49,40 +49,40 @@ func (r *repo) UpdateStats(stats *model.Stats) error {
 	}
 
 	_, err := r.db.Exec(fmt.Sprintf(query, r.tableStat),
-		stats.Chart.Paslon01,                       //1
-		stats.Chart.Paslon02,                       //2
-		stats.Chart.Paslon03,                       //3
-		stats.Chart.Sum(),                          //4
-		stats.Administrasi.Suara.Sah,               //5
-		stats.Administrasi.Suara.TidakSah,          //6
-		stats.Administrasi.Suara.Total,             //7
-		stats.Administrasi.PemilihDpt.Jumlah,       //8
-		stats.Administrasi.PenggunaDptb.Jumlah,     //9
-		stats.Administrasi.PenggunaNonDpt.Jumlah,   //10
-		stats.Administrasi.PenggunaTotal.Jumlah,    //11
-		stats.CountMetric.DivChartSumSuaraSah,      //12
-		stats.CountMetric.DivSahTidakSahTotal,      //13
-		stats.SumMetric.DivChartSumSuaraSah,        //14
-		stats.SumMetric.DivSahTidakSahTotal,        //15
-		stats.HighestMetric.DivChartSumSuaraSah,    //16
-		stats.HighestMetric.DivSahTidakSahTotal,    //17
-		stats.TopDivChartSumSuaraSah,               //18
-		stats.TopDivSahTidakSahTotal,               //19
-		stats.TotalRecord,                          //20
-		stats.Progress,                             //21
-		stats.EstimateTime.Milliseconds(),          //22
-		stats.LastProgressUpdate.UTC().UnixMilli(), //23
-		stats.ProcessingTime.Milliseconds(),        //24
-		finishedAt,                                 //25
-		stats.AllInChart.Paslon01,                  //26
-		stats.AllInChart.Paslon02,                  //27
-		stats.AllInChart.Paslon03,                  //28
-		stats.ClearChart.Paslon01,                  //29
-		stats.ClearChart.Paslon02,                  //30
-		stats.ClearChart.Paslon03,                  //31
-		stats.TotalNonNullRecord,                   //32
-		stats.TotalValidNonNullRecord,              //33
-		stats.ID,                                   //34
+		stats.Chart.Paslon01,                         //1
+		stats.Chart.Paslon02,                         //2
+		stats.Chart.Paslon03,                         //3
+		stats.Chart.Sum(),                            //4
+		stats.Administrasi.Suara.Sah,                 //5
+		stats.Administrasi.Suara.TidakSah,            //6
+		stats.Administrasi.Suara.Total,               //7
+		stats.Administrasi.PemilihDpt.Jumlah,         //8
+		stats.Administrasi.PenggunaDptb.Jumlah,       //9
+		stats.Administrasi.PenggunaNonDpt.Jumlah,     //10
+		stats.Administrasi.PenggunaTotal.Jumlah,      //11
+		stats.CountMetric.DivChartSumSuaraSah,        //12
+		stats.CountMetric.DivSahTidakSahTotal,        //13
+		stats.SumMetric.DivChartSumSuaraSah,          //14
+		stats.SumMetric.DivSahTidakSahTotal,          //15
+		stats.HighestMetric.DivChartSumSuaraSah,      //16
+		stats.HighestMetric.DivSahTidakSahTotal,      //17
+		stats.TopDivChartSumSuaraSah,                 //18
+		stats.TopDivSahTidakSahTotal,                 //19
+		stats.WebStast.DataCount,                     //20
+		stats.WebStast.Percentage,                    //21
+		stats.WebStast.Estimation.Milliseconds(),     //22
+		stats.WebStast.Timestamp.UTC().UnixMilli(),   //23
+		stats.WebStast.ProcessingTime.Milliseconds(), //24
+		finishedAt,                    //25
+		stats.AllInChart.Paslon01,     //26
+		stats.AllInChart.Paslon02,     //27
+		stats.AllInChart.Paslon03,     //28
+		stats.ClearChart.Paslon01,     //29
+		stats.ClearChart.Paslon02,     //30
+		stats.ClearChart.Paslon03,     //31
+		stats.TotalNonNullRecord,      //32
+		stats.TotalValidNonNullRecord, //33
+		stats.WebStast.UploadID,       //34
 	)
 
 	return err
