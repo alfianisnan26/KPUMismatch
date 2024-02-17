@@ -1,8 +1,8 @@
 package model
 
 type Metric struct {
-	DivChartSumSuaraSah int
-	DivSahTidakSahTotal int
+	DivChartSumSuaraSah int `json:"div_chart_sum_suara_sah,omitempty"`
+	DivSahTidakSahTotal int `json:"div_sah_tidak_sah_total,omitempty"`
 }
 
 func (m *Metric) Count() Metric {

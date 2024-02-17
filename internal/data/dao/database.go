@@ -9,3 +9,8 @@ type Database interface {
 	UpdateStats(stats *model.Stats) error
 	InsertWebStats(webStats *model.WebStats) error
 }
+
+type UpdaterDatabase interface {
+	GetSummary() (model.Summary, error)
+	InsertSummary(summary model.Summary) error
+}

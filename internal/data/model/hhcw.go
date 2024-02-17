@@ -45,9 +45,9 @@ func (hhcw HHCWEntity) IsValidVote() bool {
 }
 
 type ChartInfo struct {
-	Paslon01,
-	Paslon02,
-	Paslon03 int
+	Paslon01 int `json:"01,omitempty"`
+	Paslon02 int `json:"02,omitempty"`
+	Paslon03 int `json:"03,omitempty"`
 
 	highestPercentage *float32
 }
@@ -147,9 +147,9 @@ func (jd JLPData) IsValid() bool {
 }
 
 type SuaraData struct {
-	Sah,
-	TidakSah,
-	Total int
+	Sah      int `json:"sah,omitempty"`
+	TidakSah int `json:"tidak_sah,omitempty"`
+	Total    int `json:"total,omitempty"`
 }
 
 func (sd SuaraData) Add(o SuaraData) SuaraData {

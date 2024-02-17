@@ -32,7 +32,7 @@ func (svc *service) updateAll(hhcwCh <-chan *hhcwCached, stats *model.Stats) err
 				group = append(group, hhcw.obj)
 			}
 
-			stats.Evaluate(hhcw.obj)
+			stats.Evaluate()
 		} else {
 			finished = true
 		}

@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"kawalrealcount/internal/data/dao"
 	"kawalrealcount/internal/data/model"
-	"kawalrealcount/internal/pkg/httpclient/kawalpemilu"
 	"kawalrealcount/internal/pkg/httpclient/kpu"
 	"kawalrealcount/internal/pkg/postgresql"
 	"kawalrealcount/internal/pkg/redis"
 	"kawalrealcount/internal/service/contributor"
-	"kawalrealcount/internal/service/scrapper"
 	"kawalrealcount/internal/service/scrapper_v2"
+	"kawalrealcount/internal/service/updater"
 	"os"
+	"os/signal"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -24,18 +26,17 @@ const secret = "MUST MANUALLY SET ON EVERY BUILD"
 
 func main() {
 
-	filePath := os.Getenv("FILE_PATH")
-	noCache := os.Getenv("NO_CACHE") == "True"
 	redisHost := os.Getenv("REDIS_HOST")
 	postgresTableRecord := os.Getenv("POSTGRES_TABLE")
 	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
 	postgresTableWebStats := os.Getenv("POSTGRES_TABLE_WEB_STATS")
+	postgresTableHistogram := os.Getenv("POSTGRES_TABLE_HISTOGRAM")
 	maximumRunningThread, _ := strconv.Atoi(os.Getenv("MAX_RUNNING_THREAD"))
 	batchInsertLength, _ := strconv.Atoi(os.Getenv("BATCH_INSERT_LENGTH"))
 
 	postgresUrl := os.Getenv("POSTGRES_URL")
 	cooldownMinutes, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES"))
-	scrapAll := os.Getenv("SCRAP_ALL") == "True"
+	cooldownMinutesUpdate, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES_UPDATE"))
 
 	contributionToken := os.Getenv("CONTRIBUTION_TOKEN")
 
@@ -63,20 +64,20 @@ func main() {
 		cacheRepo dao.Cache
 		err       error
 	)
-	if !noCache {
-		cacheRepo, err = redis.New(redis.Param{
-			Host: redisHost,
-		})
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+	cacheRepo, err = redis.New(redis.Param{
+		Host: redisHost,
+	})
+	if err != nil {
+		fmt.Println(err.Error())
+		return
 	}
 
 	psql, err := postgresql.New(postgresql.Param{
-		ConnectionURL: postgresUrl,
-		TableRecord:   postgresTableRecord,
-		TableStats:    postgresTableStats,
-		TableWebStats: postgresTableWebStats,
+		ConnectionURL:  postgresUrl,
+		TableRecord:    postgresTableRecord,
+		TableStats:     postgresTableStats,
+		TableWebStats:  postgresTableWebStats,
+		TableHistogram: postgresTableHistogram,
 	})
 	if err != nil {
 		fmt.Println(err.Error())
@@ -85,19 +86,6 @@ func main() {
 
 	kpuRepo := kpu.New(kpu.Param{
 		CacheRepo: cacheRepo,
-	})
-	kawalPemiluRepo := kawalpemilu.New(kawalpemilu.Param{
-		CacheRepo: cacheRepo,
-	})
-
-	svc := scrapper.New(scrapper.Param{
-		Contributor:     contributorData,
-		KPURepo:         kpuRepo,
-		KawalPemiluRepo: kawalPemiluRepo,
-		DatabaseRepo:    psql,
-
-		MaximumRunningThread: maximumRunningThread,
-		BatchInsertLength:    batchInsertLength,
 	})
 
 	svcv2 := scrapper_v2.New(scrapper_v2.Param{
@@ -112,37 +100,72 @@ func main() {
 		NullRecordExpiry:           time.Minute * 10,
 	})
 
-	// first run
-	var fn func()
+	updaterSvc := updater.New(updater.Param{
+		UpdaterDatabaseRepo: psql,
+	})
 
-	if scrapAll {
-		fn = func() {
-			err := svcv2.ScrapAll()
-			if err != nil {
+	quit := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
+		defer wg.Done()
+		for {
+			if err := updaterSvc.UpdateStats(); err != nil {
 				fmt.Println(err)
 				return
 			}
-		}
-	} else {
-		fn = func() {
-			if err := svc.ScrapAllCompiled(filePath, false); err != nil {
-				fmt.Println(err.Error())
-				return
+
+			sleep := time.After(time.Minute * time.Duration(cooldownMinutesUpdate))
+		LoopFor1:
+			for {
+				select {
+				case <-quit:
+					return
+				case <-sleep:
+					break LoopFor1
+				}
 			}
 		}
-	}
+	}(&wg, quit)
 
-	for {
+	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
+		defer wg.Done()
+		for {
+			if err := svcv2.ScrapAll(); err != nil {
+				fmt.Println(err)
+				return
+			}
 
-		fn()
+			if cooldownMinutes == 0 {
+				return
+			}
 
-		if cooldownMinutes == 0 {
-			return
+			fmt.Printf("Sleeping for %d minutes", cooldownMinutes)
+
+			sleep := time.After(time.Minute * time.Duration(cooldownMinutes))
+
+		LoopFor2:
+			for {
+				select {
+				case <-quit:
+					return
+				case <-sleep:
+					break LoopFor2
+				}
+			}
 		}
+	}(&wg, quit)
 
-		fmt.Printf("Sleeping for %d minutes", cooldownMinutes)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-		time.Sleep(time.Minute * time.Duration(cooldownMinutes))
-	}
+	// Wait for a termination signal
+	<-sigs
 
+	close(quit)
+
+	wg.Wait()
+
+	return
 }

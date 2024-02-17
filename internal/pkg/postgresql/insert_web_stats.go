@@ -12,8 +12,8 @@ func (r *repo) InsertWebStats(webStats *model.WebStats) error {
 		return err
 	}
 
-	query := `INSERT INTO %s (upload_id, memory_info, rps, est, percentage, data_count, ts)
-values ($1,$2,$3,$4,$5,$6,$7);`
+	query := `INSERT INTO %s (upload_id, memory_info, rps, est, percentage, ts)
+values ($1,$2,$3,$4,$5,$6);`
 
 	_, err = r.db.Exec(fmt.Sprintf(query, r.tableWebStats),
 		webStats.UploadID,
@@ -21,7 +21,6 @@ values ($1,$2,$3,$4,$5,$6,$7);`
 		webStats.RPS,
 		webStats.Estimation.Milliseconds(),
 		webStats.Percentage,
-		webStats.DataCount,
 		webStats.Timestamp.UTC().UnixMilli(),
 	)
 	return err

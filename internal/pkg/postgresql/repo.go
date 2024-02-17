@@ -10,16 +10,21 @@ type repo struct {
 	db                       *sql.DB
 	tableRecord              string
 	tableStat, tableWebStats string
+	tableHistogram           any
 }
 
 type Param struct {
-	ConnectionURL string
-	TableRecord   string
-	TableStats    string
-	TableWebStats string
+	ConnectionURL  string
+	TableRecord    string
+	TableStats     string
+	TableWebStats  string
+	TableHistogram string
 }
 
-func New(param Param) (dao.Database, error) {
+func New(param Param) (interface {
+	dao.Database
+	dao.UpdaterDatabase
+}, error) {
 	// Initialize PostgreSQL connection
 	db, err := sql.Open("postgres", param.ConnectionURL)
 	if err != nil {
@@ -33,9 +38,10 @@ func New(param Param) (dao.Database, error) {
 
 	// Return the PostgreSQL repository
 	return &repo{
-		db:            db,
-		tableRecord:   param.TableRecord,
-		tableStat:     param.TableStats,
-		tableWebStats: param.TableWebStats,
+		db:             db,
+		tableRecord:    param.TableRecord,
+		tableStat:      param.TableStats,
+		tableWebStats:  param.TableWebStats,
+		tableHistogram: param.TableHistogram,
 	}, nil
 }
