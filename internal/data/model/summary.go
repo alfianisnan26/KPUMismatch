@@ -27,3 +27,17 @@ type Summary struct {
 	ClearData   SummaryModule
 	AllInData   SummaryModule
 }
+
+type StaticSummary struct {
+	Key string
+	Val json.RawMessage
+}
+
+type MapDist struct {
+	Winner     string    `json:"winner,omitempty"`
+	VotesValue int       `json:"votes_value,omitempty"`
+	Chart      ChartInfo `json:"chart,omitempty"`
+	Latitude   string    `json:"latitude,omitempty"`
+	Longitude  string    `json:"longitude,omitempty"`
+	City       string    `json:"city,omitempty"`
+}

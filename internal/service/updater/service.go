@@ -8,6 +8,7 @@ type service struct {
 
 type Service interface {
 	UpdateStats() error
+	UpdateStaticStats() error
 }
 
 type Param struct {

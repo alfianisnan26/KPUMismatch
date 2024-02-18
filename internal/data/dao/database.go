@@ -12,5 +12,10 @@ type Database interface {
 
 type UpdaterDatabase interface {
 	GetSummary() (model.Summary, error)
+	UpdateStaticSummary(summaries []model.StaticSummary) error
 	InsertSummary(summary model.Summary) error
+
+	GetMapDist() ([]model.MapDist, error)
+	GetPotentialTableSum() ([]model.HHCWEntity, error)
+	GetPotentialTableAllIn() ([]model.HHCWEntity, error)
 }

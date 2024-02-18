@@ -27,17 +27,19 @@ const secret = "MUST MANUALLY SET ON EVERY BUILD"
 func main() {
 
 	redisHost := os.Getenv("REDIS_HOST")
+	redisPasswd := os.Getenv("REDIS_PASSWORD")
 	postgresTableRecord := os.Getenv("POSTGRES_TABLE")
 	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
 	postgresTableWebStats := os.Getenv("POSTGRES_TABLE_WEB_STATS")
 	postgresTableHistogram := os.Getenv("POSTGRES_TABLE_HISTOGRAM")
+	postgresTableKeyVal := os.Getenv("POSTGRES_TABLE_KEY_VAL")
 	maximumRunningThread, _ := strconv.Atoi(os.Getenv("MAX_RUNNING_THREAD"))
 	batchInsertLength, _ := strconv.Atoi(os.Getenv("BATCH_INSERT_LENGTH"))
 
 	postgresUrl := os.Getenv("POSTGRES_URL")
 	cooldownMinutes, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES"))
 	cooldownMinutesUpdate, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES_UPDATE"))
-
+	coolDownMinutesUpdateStatic, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES_UPDATE_STATIC"))
 	contributionToken := os.Getenv("CONTRIBUTION_TOKEN")
 
 	var contributorData model.ContributorData
@@ -65,7 +67,8 @@ func main() {
 		err       error
 	)
 	cacheRepo, err = redis.New(redis.Param{
-		Host: redisHost,
+		Host:     redisHost,
+		Password: redisPasswd,
 	})
 	if err != nil {
 		fmt.Println(err.Error())
@@ -78,6 +81,7 @@ func main() {
 		TableStats:     postgresTableStats,
 		TableWebStats:  postgresTableWebStats,
 		TableHistogram: postgresTableHistogram,
+		TableKeyVal:    postgresTableKeyVal,
 	})
 	if err != nil {
 		fmt.Println(err.Error())
@@ -106,7 +110,7 @@ func main() {
 
 	quit := make(chan struct{})
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
 		defer wg.Done()
@@ -152,6 +156,27 @@ func main() {
 					return
 				case <-sleep:
 					break LoopFor2
+				}
+			}
+		}
+	}(&wg, quit)
+
+	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
+		defer wg.Done()
+		for {
+			if err := updaterSvc.UpdateStaticStats(); err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			sleep := time.After(time.Minute * time.Duration(coolDownMinutesUpdateStatic))
+		LoopFor3:
+			for {
+				select {
+				case <-quit:
+					return
+				case <-sleep:
+					break LoopFor3
 				}
 			}
 		}

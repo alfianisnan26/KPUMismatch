@@ -10,7 +10,8 @@ type repo struct {
 	db                       *sql.DB
 	tableRecord              string
 	tableStat, tableWebStats string
-	tableHistogram           any
+	tableHistogram           string
+	tableKeyVal              string
 }
 
 type Param struct {
@@ -19,6 +20,7 @@ type Param struct {
 	TableStats     string
 	TableWebStats  string
 	TableHistogram string
+	TableKeyVal    string
 }
 
 func New(param Param) (interface {
@@ -43,5 +45,6 @@ func New(param Param) (interface {
 		tableStat:      param.TableStats,
 		tableWebStats:  param.TableWebStats,
 		tableHistogram: param.TableHistogram,
+		tableKeyVal:    param.TableKeyVal,
 	}, nil
 }

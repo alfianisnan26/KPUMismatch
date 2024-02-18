@@ -11,6 +11,8 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./main ./app/main.go
 
+RUN apk add -U --no-cache ca-certificates
+
 ###
 ## Step 2: Runtime stage
 FROM scratch
@@ -20,3 +22,5 @@ COPY --from=builder /app/main /
 
 # Set the entry point for the container
 ENTRYPOINT ["/main"]
+
+COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

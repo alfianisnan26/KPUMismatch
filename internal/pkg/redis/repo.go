@@ -12,13 +12,15 @@ type repo struct {
 }
 
 type Param struct {
-	Host string
+	Host     string
+	Password string
 }
 
 func New(param Param) (dao.Cache, error) {
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr: param.Host,
+		Addr:     param.Host,
+		Password: param.Password,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
