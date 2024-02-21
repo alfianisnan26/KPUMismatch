@@ -2,32 +2,28 @@ package main
 
 import (
 	"fmt"
-	"kawalrealcount/internal/data/dao"
 	"kawalrealcount/internal/data/model"
 	"kawalrealcount/internal/pkg/httpclient/kpu"
 	"kawalrealcount/internal/pkg/postgresql"
-	"kawalrealcount/internal/pkg/redis"
 	"kawalrealcount/internal/service/contributor"
 	"kawalrealcount/internal/service/scrapper_v2"
 	"kawalrealcount/internal/service/updater"
 	"os"
-	"os/signal"
 	"strconv"
-	"sync"
-	"syscall"
 	"time"
-)
-
-var (
-	jobControl = make(chan struct{}, 1)
 )
 
 const secret = "MUST MANUALLY SET ON EVERY BUILD"
 
+const (
+	workerTypeScrapper       = "SCRAPPER"
+	workerTypeStatsUpdater   = "STATS_UPDATER"
+	workerTypeStatisticStats = "STATISTIC_STATS_UPDATER"
+	workerTypeTPSSync        = "TPS_SYNC"
+)
+
 func main() {
 
-	redisHost := os.Getenv("REDIS_HOST")
-	redisPasswd := os.Getenv("REDIS_PASSWORD")
 	postgresTableRecord := os.Getenv("POSTGRES_TABLE")
 	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
 	postgresTableWebStats := os.Getenv("POSTGRES_TABLE_WEB_STATS")
@@ -35,12 +31,11 @@ func main() {
 	postgresTableKeyVal := os.Getenv("POSTGRES_TABLE_KEY_VAL")
 	maximumRunningThread, _ := strconv.Atoi(os.Getenv("MAX_RUNNING_THREAD"))
 	batchInsertLength, _ := strconv.Atoi(os.Getenv("BATCH_INSERT_LENGTH"))
+	workerType := os.Getenv("WORKER_TYPE")
 
 	postgresUrl := os.Getenv("POSTGRES_URL")
-	cooldownMinutes, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES"))
-	cooldownMinutesUpdate, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES_UPDATE"))
-	coolDownMinutesUpdateStatic, _ := strconv.Atoi(os.Getenv("COOLDOWN_MINUTES_UPDATE_STATIC"))
 	contributionToken := os.Getenv("CONTRIBUTION_TOKEN")
+	makeItSimpler := os.Getenv("MAKE_IT_SIMPLER") == "True"
 
 	var contributorData model.ContributorData
 	if contributionToken != "" {
@@ -50,7 +45,7 @@ func main() {
 		if err == nil {
 			contributorData, err = contributionSvc.FetchContributionData(contributionToken)
 			if err == nil {
-				redisHost = contributorData.RedisHost
+				//redisHost = contributorData.RedisHost
 				postgresTableRecord = contributorData.PostgresTableRecord
 				postgresTableStats = contributorData.PostgresTableStats
 				postgresUrl = contributorData.PostgresUrl
@@ -63,17 +58,8 @@ func main() {
 	}
 
 	var (
-		cacheRepo dao.Cache
-		err       error
+		err error
 	)
-	cacheRepo, err = redis.New(redis.Param{
-		Host:     redisHost,
-		Password: redisPasswd,
-	})
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
 
 	psql, err := postgresql.New(postgresql.Param{
 		ConnectionURL:  postgresUrl,
@@ -88,13 +74,10 @@ func main() {
 		return
 	}
 
-	kpuRepo := kpu.New(kpu.Param{
-		CacheRepo: cacheRepo,
-	})
+	kpuRepo := kpu.New()
 
 	svcv2 := scrapper_v2.New(scrapper_v2.Param{
 		KPURepo:                    kpuRepo,
-		CacheRepo:                  cacheRepo,
 		DatabaseRepo:               psql,
 		MaximumRunningThread:       maximumRunningThread,
 		BatchInsertLength:          batchInsertLength,
@@ -102,95 +85,35 @@ func main() {
 		ValidRecordExpiry:          time.Hour * 3,
 		NotNullInvalidRecordExpiry: time.Minute * 30,
 		NullRecordExpiry:           time.Minute * 10,
+		MakeItSimpler:              makeItSimpler,
 	})
 
 	updaterSvc := updater.New(updater.Param{
 		UpdaterDatabaseRepo: psql,
 	})
 
-	quit := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(3)
-
-	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
-		defer wg.Done()
-		for {
-			if err := updaterSvc.UpdateStats(); err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			sleep := time.After(time.Minute * time.Duration(cooldownMinutesUpdate))
-		LoopFor1:
-			for {
-				select {
-				case <-quit:
-					return
-				case <-sleep:
-					break LoopFor1
-				}
-			}
+	switch workerType {
+	case workerTypeStatsUpdater:
+		if err := updaterSvc.UpdateStats(); err != nil {
+			fmt.Println(err)
+			return
 		}
-	}(&wg, quit)
-
-	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
-		defer wg.Done()
-		for {
-			if err := svcv2.ScrapAll(); err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			if cooldownMinutes == 0 {
-				return
-			}
-
-			fmt.Printf("Sleeping for %d minutes", cooldownMinutes)
-
-			sleep := time.After(time.Minute * time.Duration(cooldownMinutes))
-
-		LoopFor2:
-			for {
-				select {
-				case <-quit:
-					return
-				case <-sleep:
-					break LoopFor2
-				}
-			}
+	case workerTypeStatisticStats:
+		if err := updaterSvc.UpdateStaticStats(); err != nil {
+			fmt.Println(err)
+			return
 		}
-	}(&wg, quit)
-
-	go func(wg *sync.WaitGroup, quit <-chan struct{}) {
-		defer wg.Done()
-		for {
-			if err := updaterSvc.UpdateStaticStats(); err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			sleep := time.After(time.Minute * time.Duration(coolDownMinutesUpdateStatic))
-		LoopFor3:
-			for {
-				select {
-				case <-quit:
-					return
-				case <-sleep:
-					break LoopFor3
-				}
-			}
+	case workerTypeTPSSync:
+		if err := svcv2.ScrapAllPPWT(); err != nil {
+			fmt.Println(err)
+			return
 		}
-	}(&wg, quit)
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	// Wait for a termination signal
-	<-sigs
-
-	close(quit)
-
-	wg.Wait()
-
-	return
+	case workerTypeScrapper:
+		fallthrough
+	default:
+		if err := svcv2.ScrapAll(); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
 }

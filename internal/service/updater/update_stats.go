@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"kawalrealcount/internal/data/model"
+	"time"
 )
 
 func (s service) UpdateStats() error {
@@ -12,7 +13,7 @@ func (s service) UpdateStats() error {
 		return err
 	}
 
-	fmt.Println("Updating Status...")
+	fmt.Printf("[%v] Updating Status...\n", time.Now().String())
 
 	return s.UpdaterDatabaseRepo.InsertSummary(summary)
 }
@@ -63,7 +64,7 @@ func (s service) UpdateStaticStats() error {
 		},
 	}
 
-	fmt.Println("Updating Static Summary...")
+	fmt.Printf("[%v] Updating Static Summary...\n", time.Now().String())
 
 	return s.UpdaterDatabaseRepo.UpdateStaticSummary(summaries)
 }

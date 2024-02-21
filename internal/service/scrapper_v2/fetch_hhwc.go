@@ -1,57 +1,50 @@
 package scrapper_v2
 
 import (
-	"fmt"
 	"kawalrealcount/internal/data/model"
 	"kawalrealcount/internal/pkg/semaphore"
-	"sync"
 	"time"
 )
 
-func (svc *service) fetchHhcw(ppwtMap map[string]*model.PPWTEntity, hhcwCh chan<- *hhcwCached) {
+func (svc *service) fetchHhcw(ppwtCh <-chan *model.HHCWEntity, hhcwCh chan<- *hhcwCached) {
 	sm := semaphore.NewSemaphore(svc.MaximumRunningThread)
-	var wg sync.WaitGroup
-	wg.Add(len(ppwtMap))
-	for _, entity := range ppwtMap {
+
+	for {
+		entity := <-ppwtCh
+		if entity == nil {
+			break
+		}
 		sm.Acquire()
-		go func(entity *model.PPWTEntity) {
-			defer wg.Done()
+		go func(entity *model.HHCWEntity) {
 			defer sm.Release()
 
-			// if already available in cache
-			cached, err := svc.CacheRepo.GetHHCW(entity.Kode)
-			if err == nil {
+			switch {
+			case entity.IsNonNullVote() && time.Since(entity.ObtainedAt) < svc.NotNullInvalidRecordExpiry:
+				fallthrough
+			case entity.IsValidVote() && time.Since(entity.ObtainedAt) < svc.ValidRecordExpiry:
+				fallthrough
+			case time.Since(entity.ObtainedAt) < svc.NullRecordExpiry:
 				hhcwCh <- &hhcwCached{
-					obj:    &cached,
+					obj:    entity,
 					cached: true,
 				}
 				return
 			}
 
-			res, err := svc.KPURepo.GetHHWCNoCacheInfo(entity)
-			if err != nil {
+			old := *entity
+
+			if err := svc.KPURepo.GetHHWCInfo(entity); err != nil {
 				return
 			}
 
-			var expiry time.Duration
-			if res.IsNonNullVote() {
-				if res.IsValidVote() {
-					expiry = svc.ValidRecordExpiry // 2 h
-				}
-				expiry = svc.NotNullInvalidRecordExpiry // 30 min
-			} else {
-				expiry = svc.NullRecordExpiry // 10 min
-			}
-
-			if err := svc.CacheRepo.PutHHCW(entity.Kode, res, expiry); err != nil {
-				fmt.Println(err.Error())
-			}
-
 			hhcwCh <- &hhcwCached{
-				obj: &res,
+				obj:       entity,
+				isChanged: entity.UpdatedAt != old.UpdatedAt,
 			}
 		}(entity)
 	}
 
-	wg.Wait()
+	for i := 0; i < svc.MaximumRunningThread; i++ {
+		sm.Acquire()
+	}
 }

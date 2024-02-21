@@ -8,11 +8,11 @@ import (
 
 type Service interface {
 	ScrapAll() error
+	ScrapAllPPWT() error
 }
 
 type Param struct {
 	KPURepo                    dao.KPU
-	CacheRepo                  dao.Cache
 	DatabaseRepo               dao.Database
 	MaximumRunningThread       int
 	BatchInsertLength          int
@@ -20,6 +20,7 @@ type Param struct {
 	ValidRecordExpiry          time.Duration
 	NotNullInvalidRecordExpiry time.Duration
 	NullRecordExpiry           time.Duration
+	MakeItSimpler              bool
 }
 
 type service struct {

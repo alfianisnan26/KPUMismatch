@@ -30,7 +30,7 @@ sum(total_votes_03) as "03",
 SUBSTRING(code, 0, 5) as city_id,
 kabupaten
 FROM
-kpu_tps
+%s
 GROUP BY
 city_id, kabupaten
 ) as ci INNER JOIN map_loc as ml ON ml.serial = ci.city_id::numeric WHERE city_id ~ E'^\\d+$'`
@@ -52,7 +52,7 @@ const queryPotentialTableSum = `SELECT
     
     link AS "Link", updated_at AS "Diperbarui Pada",
     obtained_at AS "Diperoleh Pada"
-FROM kpu_tps WHERE (selisih_suara_paslon_dan_jumlah_sah <> 0 AND selisih_suara_sah_tidak_sah_dan_total <> 0) ORDER BY selisih_suara_paslon_dan_jumlah_sah+selisih_suara_sah_tidak_sah_dan_total DESC LIMIT 5000`
+FROM %s WHERE (selisih_suara_paslon_dan_jumlah_sah <> 0 AND selisih_suara_sah_tidak_sah_dan_total <> 0) OR total_sum_votes > 300 OR total_votes > 300 OR jml_hak_pilih > 300 ORDER BY total_sum_votes+total_votes+jml_hak_pilih+selisih_suara_paslon_dan_jumlah_sah+selisih_suara_sah_tidak_sah_dan_total DESC LIMIT 5000`
 
 const queryPotentialTableAllIn = `SELECT
 	code AS "Kode",
@@ -72,12 +72,12 @@ const queryPotentialTableAllIn = `SELECT
 	link AS "Link",
 	updated_at AS "Diperbarui Pada",
 	obtained_at AS "Diperoleh Pada"
-FROM kpu_tps WHERE (all_in <> 0 AND total_votes <> 0 AND total_sum_votes <> 0) ORDER BY total_sum_votes DESC LIMIT 5000 `
+FROM %s WHERE selisih_suara_paslon_dan_jumlah_sah = 0 AND selisih_suara_sah_tidak_sah_dan_total = 0 AND all_in > 0 AND total_sum_votes <= 300 AND total_votes <= 300 AND jml_hak_pilih <= 300 ORDER BY total_sum_votes DESC LIMIT 5000 `
 
 func (r *repo) GetMapDist() ([]model.MapDist, error) {
 
 	var mapDists = make([]model.MapDist, 0)
-	row, err := r.db.Query(queryMapDist)
+	row, err := r.db.Query(fmt.Sprintf(queryMapDist, r.tableRecord))
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (r *repo) GetMapDist() ([]model.MapDist, error) {
 }
 func (r *repo) GetPotentialTableSum() ([]model.HHCWEntity, error) {
 	var group = make([]model.HHCWEntity, 0)
-	row, err := r.db.Query(queryPotentialTableSum)
+	row, err := r.db.Query(fmt.Sprintf(queryPotentialTableSum, r.tableRecord))
 	if err != nil {
 		return nil, err
 	}
@@ -113,23 +113,17 @@ func (r *repo) GetPotentialTableSum() ([]model.HHCWEntity, error) {
 	for row.Next() {
 		var obj model.HHCWEntity
 		var (
-			code       string
-			provinsi   string
-			kabupaten  string
-			kecamatan  string
-			kelurahan  string
-			tps        string
 			obtainedAt int64
 			updatedAt  int64
 		)
 
 		if err := row.Scan(
-			&code,
-			&provinsi,
-			&kabupaten,
-			&kecamatan,
-			&kelurahan,
-			&tps,
+			&obj.Code,
+			&obj.Provinsi,
+			&obj.Kabupaten,
+			&obj.Kecamatan,
+			&obj.Kelurahan,
+			&obj.TPS,
 			&obj.Chart.Paslon01,
 			&obj.Chart.Paslon02,
 			&obj.Chart.Paslon03,
@@ -146,22 +140,6 @@ func (r *repo) GetPotentialTableSum() ([]model.HHCWEntity, error) {
 
 		obj.ObtainedAt = time.UnixMilli(obtainedAt)
 		obj.UpdatedAt = time.UnixMilli(updatedAt)
-		obj.Parent = &model.PPWTEntity{
-			Kode: code,
-			Nama: tps,
-			Parent: &model.PPWTEntity{
-				Nama: kelurahan,
-				Parent: &model.PPWTEntity{
-					Nama: kecamatan,
-					Parent: &model.PPWTEntity{
-						Nama: kabupaten,
-						Parent: &model.PPWTEntity{
-							Nama: provinsi,
-						},
-					},
-				},
-			},
-		}
 
 		group = append(group, obj)
 	}
@@ -170,7 +148,7 @@ func (r *repo) GetPotentialTableSum() ([]model.HHCWEntity, error) {
 }
 func (r *repo) GetPotentialTableAllIn() ([]model.HHCWEntity, error) {
 	var group = make([]model.HHCWEntity, 0)
-	row, err := r.db.Query(queryPotentialTableAllIn)
+	row, err := r.db.Query(fmt.Sprintf(queryPotentialTableAllIn, r.tableRecord))
 	if err != nil {
 		return nil, err
 	}
@@ -178,23 +156,17 @@ func (r *repo) GetPotentialTableAllIn() ([]model.HHCWEntity, error) {
 	for row.Next() {
 		var obj model.HHCWEntity
 		var (
-			code       string
-			provinsi   string
-			kabupaten  string
-			kecamatan  string
-			kelurahan  string
-			tps        string
 			obtainedAt int64
 			updatedAt  int64
 		)
 
 		if err := row.Scan(
-			&code,
-			&provinsi,
-			&kabupaten,
-			&kecamatan,
-			&kelurahan,
-			&tps,
+			&obj.Code,
+			&obj.Provinsi,
+			&obj.Kabupaten,
+			&obj.Kecamatan,
+			&obj.Kelurahan,
+			&obj.TPS,
 			&obj.Chart.Paslon01,
 			&obj.Chart.Paslon02,
 			&obj.Chart.Paslon03,
@@ -211,22 +183,6 @@ func (r *repo) GetPotentialTableAllIn() ([]model.HHCWEntity, error) {
 
 		obj.ObtainedAt = time.UnixMilli(obtainedAt)
 		obj.UpdatedAt = time.UnixMilli(updatedAt)
-		obj.Parent = &model.PPWTEntity{
-			Kode: code,
-			Nama: tps,
-			Parent: &model.PPWTEntity{
-				Nama: kelurahan,
-				Parent: &model.PPWTEntity{
-					Nama: kecamatan,
-					Parent: &model.PPWTEntity{
-						Nama: kabupaten,
-						Parent: &model.PPWTEntity{
-							Nama: provinsi,
-						},
-					},
-				},
-			},
-		}
 
 		group = append(group, obj)
 	}
@@ -235,7 +191,7 @@ func (r *repo) GetPotentialTableAllIn() ([]model.HHCWEntity, error) {
 }
 
 var queryInsert = `
-INSERT INTO key_val (key, val)
+INSERT INTO %s (key, val)
 VALUES %s
 ON CONFLICT (key) DO UPDATE
 SET val = EXCLUDED.val;
@@ -246,8 +202,8 @@ func (r *repo) UpdateStaticSummary(summaries []model.StaticSummary) error {
 	for _, summary := range summaries {
 		mapData = append(mapData, buildArgsStatic(summary)...)
 	}
-
-	_, err := r.db.Exec(fmt.Sprintf(queryInsert, buildPlaceholder(2, len(summaries))), mapData...)
+	q := fmt.Sprintf(queryInsert, r.tableKeyVal, buildPlaceholder(2, len(summaries)))
+	_, err := r.db.Exec(q, mapData...)
 	return err
 }
 

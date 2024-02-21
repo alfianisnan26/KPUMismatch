@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	whereNonNull    = `WHERE total_sum_votes != 0 and total_votes != 0`
-	whereClearValid = `WHERE total_sum_votes != 0 and total_votes != 0 and selisih_suara_paslon_dan_jumlah_sah = 0 and selisih_suara_sah_tidak_sah_dan_total = 0`
-	whereAllInValid = `WHERE all_in > 0 and total_sum_votes != 0 and total_votes != 0 and selisih_suara_paslon_dan_jumlah_sah = 0 and selisih_suara_sah_tidak_sah_dan_total = 0`
+	whereNonNull           = `WHERE total_sum_votes != 0 and total_votes != 0`
+	whereClearValid        = `WHERE total_sum_votes != 0 and total_votes != 0 and selisih_suara_paslon_dan_jumlah_sah = 0 and selisih_suara_sah_tidak_sah_dan_total = 0`
+	whereAllInValid        = `WHERE all_in > 0 and total_sum_votes != 0 and total_votes != 0 and selisih_suara_paslon_dan_jumlah_sah = 0 and selisih_suara_sah_tidak_sah_dan_total = 0`
+	whereErrorBeyondMaxVal = `WHERE total_sum_votes > 300 OR total_votes > 300 OR jml_hak_pilih > 300`
 )
 
 const querySelectSum = `
@@ -26,7 +27,7 @@ SELECT
 	count(*) as total`
 
 func (r *repo) GetSummary() (model.Summary, error) {
-	whereSeq := []string{"", whereNonNull, whereClearValid, whereAllInValid}
+	whereSeq := []string{"", whereNonNull, whereClearValid, whereAllInValid, whereErrorBeyondMaxVal}
 	var summary model.Summary
 	for i, where := range whereSeq {
 		var v model.SummaryModule
@@ -62,6 +63,8 @@ func (r *repo) GetSummary() (model.Summary, error) {
 			summary.ClearData = v
 		case 3:
 			summary.AllInData = v
+		case 4:
+			summary.ErrorBeyondMaxValData = v
 		}
 	}
 
@@ -72,12 +75,13 @@ func (r *repo) InsertSummary(summary model.Summary) error {
 
 	ts := time.Now()
 
-	query := `INSERT INTO %s(raw_data, not_null_data, clear_data, all_in_data, ts, ts_unix) VALUES ($1, $2, $3, $4, $5, $6)`
+	query := `INSERT INTO %s(raw_data, not_null_data, clear_data, all_in_data, error_max_val_data, ts, ts_unix) VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	_, err := r.db.Exec(fmt.Sprintf(query, r.tableHistogram),
 		summary.RawData.RawJson(),
 		summary.NotNullData.RawJson(),
 		summary.ClearData.RawJson(),
 		summary.AllInData.RawJson(),
+		summary.ErrorBeyondMaxValData.RawJson(),
 		ts,
 		ts.UnixMilli(),
 	)

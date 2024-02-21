@@ -16,7 +16,7 @@ func (svc *service) updateAll(hhcwCh <-chan *hhcwCached, stats *model.Stats) err
 
 	group := make([]*model.HHCWEntity, 0, svc.BatchInsertLength)
 	var finished bool
-	var cachedCount int
+	var cachedCount, changedCount int
 
 	for !finished {
 		hhcw := <-hhcwCh
@@ -24,11 +24,16 @@ func (svc *service) updateAll(hhcwCh <-chan *hhcwCached, stats *model.Stats) err
 			if hhcw.cached {
 				cachedCount++
 			} else {
-				if hhcw.obj == nil || hhcw.obj.Parent == nil {
+				if hhcw.obj == nil {
 					fmt.Println("Unknown Nil Object", hhcw)
 					continue
 				}
-				hhcw.obj.Link, _ = svc.KPURepo.GetPageLink(*hhcw.obj.Parent)
+
+				if hhcw.isChanged {
+					changedCount++
+				}
+
+				hhcw.obj.Link, _ = svc.KPURepo.GetPageLink(hhcw.obj.GetCanonicalCode())
 				group = append(group, hhcw.obj)
 			}
 
@@ -48,7 +53,7 @@ func (svc *service) updateAll(hhcwCh <-chan *hhcwCached, stats *model.Stats) err
 				break
 			}
 
-			fmt.Printf("%v\t| Cached: %d | Sample: %s | %s\n", stats.WebStast.String(), cachedCount, firstEntity.Parent.Kode, firstEntity.Link)
+			fmt.Printf("%v\t| Changed: %d | Cached: %d | Sample: %s | %s\n", stats.WebStast.String(), changedCount, cachedCount, firstEntity.Code, firstEntity.Link)
 
 			if err := svc.DatabaseRepo.PutReplaceListData(group, stats.WebStast.UploadID); err != nil {
 				fmt.Println(err.Error())

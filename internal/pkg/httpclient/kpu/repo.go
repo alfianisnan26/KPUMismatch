@@ -10,30 +10,46 @@ import (
 	dto2 "kawalrealcount/internal/pkg/httpclient/kpu/dto"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 const (
-	host    = "https://sirekap-obj-data.kpu.go.id"
-	webHost = "https://pemilu2024.kpu.go.id/pilpres/hitung-suara"
-
-	ppwtListPath = "/wilayah/pemilu/ppwp"
-	hhcwInfoPath = "/pemilu/hhcw/ppwp"
-
+	host             = "https://sirekap-obj-data.kpu.go.id"
+	webHost          = "https://pemilu2024.kpu.go.id/pilpres/hitung-suara"
+	hhcwInfoPath     = "/pemilu/hhcw/ppwp"
+	ppwtListPath     = "/wilayah/pemilu/ppwp"
 	stdJsonExtension = ".json"
 )
 
 type repo struct {
-	client    *http.Client
-	cacheRepo dao.Cache
+	client *http.Client
 }
 
-func (r repo) GetPageLink(req model.PPWTEntity) (string, error) {
-	return url.JoinPath(webHost, req.GetCanonicalCode())
+func (r repo) GetPPWTList(req model.PPWTEntity) ([]model.PPWTEntity, error) {
+	endpoint, err := url.JoinPath(host, ppwtListPath, req.GetCanonicalCode()+stdJsonExtension)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := r.jsonRequest(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var respData []dto2.PPWTEntity
+	if err := json.Unmarshal(body, &respData); err != nil {
+		return nil, err
+	}
+
+	var data = make([]model.PPWTEntity, len(respData))
+	for i, datum := range respData {
+		data[i] = datum.ToModel(req)
+	}
+
+	return data, nil
 }
 
-type Param struct {
-	CacheRepo dao.Cache
+func (r repo) GetPageLink(req []string) (string, error) {
+	return url.JoinPath(webHost, req...)
 }
 
 func (r repo) jsonRequest(endpoint string) ([]byte, error) {
@@ -61,125 +77,36 @@ func (r repo) jsonRequest(endpoint string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (r repo) GetPPWTParent(req model.PPWTEntity) (model.PPWTEntity, error) {
-	node := &req
-	for i := req.Tingkat - 1; i >= 0; i-- {
-		var code = "0"
-		if i > 0 {
-			code = node.GetCanonicalCodeAll()[i-1]
-		}
-		parent := model.NewPPWT(code)
-		plist, err := r.GetPPWTList(parent)
-		if err != nil {
-			return model.PPWTEntity{}, err
-		}
-
-		for _, entity := range plist {
-			if entity.Kode == node.Kode {
-				*node = entity
-
-				if parent.Kode != "0" {
-					node.Parent = &parent
-				} else {
-					node.Parent = nil
-				}
-
-				node = &parent
-				break
-			}
-		}
-	}
-
-	return req, nil
-}
-
-func (r repo) GetPPWTList(req model.PPWTEntity) ([]model.PPWTEntity, error) {
-	endpoint, err := url.JoinPath(host, ppwtListPath, req.GetCanonicalCode()+stdJsonExtension)
+func (r repo) GetHHWCInfo(req *model.HHCWEntity) error {
+	endpoint, err := url.JoinPath(host+"/"+hhcwInfoPath, req.GetCanonicalCode()...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	body, err := r.cacheRepo.Get(endpoint, time.Hour*24, r.jsonRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	var respData []dto2.PPWTEntity
-	if err := json.Unmarshal(body, &respData); err != nil {
-		return nil, err
-	}
-
-	var data = make([]model.PPWTEntity, len(respData))
-	for i, datum := range respData {
-		data[i] = datum.ToModel(req)
-	}
-
-	return data, nil
-}
-
-func (r repo) GetHHCWInfo(req *model.PPWTEntity) (model.HHCWEntity, error) {
-	endpoint, err := url.JoinPath(host, hhcwInfoPath, req.GetCanonicalCode()+stdJsonExtension)
-	if err != nil {
-		return model.HHCWEntity{}, err
-	}
-
-	body, err := r.cacheRepo.Get(endpoint, 15*time.Minute, r.jsonRequest)
-	if err != nil {
-		return model.HHCWEntity{}, err
-	}
-
-	var respData dto2.HHCWEntity
-	if err := json.Unmarshal(body, &respData); err != nil {
-		return model.HHCWEntity{}, err
-	}
-
-	return respData.ToModel(req)
-}
-
-func (r repo) GetHHWCNoCacheInfo(req *model.PPWTEntity) (model.HHCWEntity, error) {
-	endpoint, err := url.JoinPath(host, hhcwInfoPath, req.GetCanonicalCode()+stdJsonExtension)
-	if err != nil {
-		return model.HHCWEntity{}, err
-	}
+	endpoint += ".json"
 
 	body, err := r.jsonRequest(endpoint)
 	if err != nil {
-		return model.HHCWEntity{}, nil
+		return nil
 	}
 
 	var respData dto2.HHCWEntity
 	if err := json.Unmarshal(body, &respData); err != nil {
-		return model.HHCWEntity{}, err
+		return err
 	}
 
-	return respData.ToModel(req)
-}
-
-type noCache struct{}
-
-func (n noCache) GetHHCW(key string) (model.HHCWEntity, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (n noCache) PutHHCW(key string, data model.HHCWEntity, expiry time.Duration) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (n noCache) Get(key string, expiry time.Duration, fallback func(string) ([]byte, error)) ([]byte, error) {
-	return fallback(key)
-}
-
-func New(param Param) dao.KPU {
-
-	cache := param.CacheRepo
-	if cache == nil {
-		cache = noCache{}
+	obj, err := respData.ToModel()
+	if err != nil {
+		return err
 	}
 
+	obj.Code = req.Code
+	*req = obj
+	return nil
+}
+
+func New() dao.KPU {
 	return &repo{
-		client:    http.DefaultClient,
-		cacheRepo: cache,
+		client: http.DefaultClient,
 	}
 }

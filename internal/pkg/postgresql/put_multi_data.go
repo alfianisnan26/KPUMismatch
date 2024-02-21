@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const queryMultiData = `INSERT INTO %s (code, provinsi, kabupaten, kecamatan, kelurahan, tps, total_votes_01, total_votes_02, total_votes_03,
+const queryMultiData = `INSERT INTO %s (code, total_votes_01, total_votes_02, total_votes_03,
                total_sum_votes, total_valid_votes, total_invalid_votes, total_votes, dpt, dptb, dptk, jml_hak_pilih,
                selisih_suara_paslon_dan_jumlah_sah, selisih_suara_sah_tidak_sah_dan_total,
                link, pic_urls, updated_at, obtained_at, update_id, all_in)
@@ -34,14 +34,23 @@ ON CONFLICT (code)
                   update_id = EXCLUDED.update_id,
                   all_in = EXCLUDED.all_in;`
 
-func (r *repo) PutReplaceMultipleData(entities map[string]*model.HHCWEntity, updateId uint64) error {
+const queryMultiDataPpwt = `INSERT INTO %s (code, provinsi, kabupaten, kecamatan,
+               tps)
+VALUES %s
+ON CONFLICT (code)
+    DO UPDATE SET
+                	provinsi = EXCLUDED.provinsi,
+    				kabupaten = EXCLUDED.kabupaten,
+    				kecamatan = EXCLUDED.kecamatan,
+    				tps = EXCLUDED.tps;`
 
-	var args = make([]interface{}, 0, len(entities)*25)
+func (r *repo) PutReplaceListData(entities []*model.HHCWEntity, updateId uint64) error {
+	var args = make([]interface{}, 0, len(entities)*20)
 	for _, entity := range entities {
 		args = append(args, buildArgs(entity, updateId)...)
 	}
 
-	query := fmt.Sprintf(queryMultiData, r.tableRecord, buildPlaceholder(25, len(entities)))
+	query := fmt.Sprintf(queryMultiData, r.tableRecord, buildPlaceholder(20, len(entities)))
 
 	_, err := r.db.Exec(query,
 		args...,
@@ -50,14 +59,22 @@ func (r *repo) PutReplaceMultipleData(entities map[string]*model.HHCWEntity, upd
 	return err
 }
 
-func (r *repo) PutReplaceListData(entities []*model.HHCWEntity, updateId uint64) error {
-
-	var args = make([]interface{}, 0, len(entities)*25)
+func (r *repo) PutReplacePPWT(entities map[string]*model.PPWTEntity) error {
+	var args = make([]interface{}, 0, len(entities)*5)
 	for _, entity := range entities {
-		args = append(args, buildArgs(entity, updateId)...)
+		switch {
+		case entity.Parent == nil:
+			fallthrough
+		case entity.Parent.Parent == nil:
+			fallthrough
+		case entity.Parent.Parent.Parent == nil:
+			continue
+		}
+
+		args = append(args, buildArgsPpwt(entity)...)
 	}
 
-	query := fmt.Sprintf(queryMultiData, r.tableRecord, buildPlaceholder(25, len(entities)))
+	query := fmt.Sprintf(queryMultiDataPpwt, r.tableRecord, buildPlaceholder(5, len(entities)))
 
 	_, err := r.db.Exec(query,
 		args...,
@@ -80,15 +97,10 @@ func buildPlaceholder(placeholder int, group int) string {
 }
 
 func buildArgs(entity *model.HHCWEntity, updateId uint64) []interface{} {
-	canonical := entity.Parent.GetCanonicalName()
+
 	metric := entity.Evaluate()
 	return []interface{}{
-		entity.Parent.Kode,                        // 1
-		canonical[0],                              // 2
-		canonical[1],                              // 3
-		canonical[2],                              // 4
-		canonical[3],                              // 5
-		canonical[4],                              // 6
+		entity.Code,                               // 1
 		entity.Chart.Paslon01,                     // 7
 		entity.Chart.Paslon02,                     // 8
 		entity.Chart.Paslon03,                     // 9
@@ -108,5 +120,15 @@ func buildArgs(entity *model.HHCWEntity, updateId uint64) []interface{} {
 		entity.ObtainedAt.UTC().UnixMilli(),       //23
 		updateId,                                  //24
 		entity.Chart.GetAllInPaslon(),             //25
+	}
+}
+
+func buildArgsPpwt(entity *model.PPWTEntity) []interface{} {
+	return []interface{}{
+		entity.Kode,
+		entity.Parent.Parent.Parent.Nama,
+		entity.Parent.Parent.Nama,
+		entity.Parent.Nama,
+		entity.Nama,
 	}
 }

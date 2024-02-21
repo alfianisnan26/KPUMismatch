@@ -54,7 +54,7 @@ func NewWebStats(targetLength int) *WebStats {
 }
 
 func (ws *WebStats) Update(newDataLength int) error {
-	ws.RPS = float32(newDataLength) / float32(time.Now().Sub(ws.Timestamp).Seconds())
+	ws.RPS = float32(newDataLength) / float32(time.Since(ws.Timestamp).Seconds())
 	if ws.RPS < 0 || ws.RPS > 100000 {
 		ws.RPS = 0
 	}

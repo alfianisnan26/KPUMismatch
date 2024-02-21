@@ -8,25 +8,22 @@ import (
 )
 
 type HHCWEntity struct {
-	Chart                 ChartInfo
-	Images                []string
-	Administrasi          AdministrasiInfo
-	UpdatedAt, ObtainedAt time.Time
-	StatusSuara           bool
-	StatusAdministrasi    bool
+	Code                                           string
+	Provinsi, Kabupaten, Kecamatan, Kelurahan, TPS string
+	Chart                                          ChartInfo
+	Images                                         []string
+	Administrasi                                   AdministrasiInfo
+	UpdatedAt, ObtainedAt                          time.Time
+	StatusSuara                                    bool
+	StatusAdministrasi                             bool
 
-	Parent *PPWTEntity
-	Link   string
+	Link string
+	ID   int64
 }
 
 func (hhcw HHCWEntity) String() string {
-	parent := ""
 
-	if hhcw.Parent != nil {
-		parent = (*hhcw.Parent).Kode
-	}
-
-	return fmt.Sprintf("%v > %v \t", parent, hhcw.Chart.String())
+	return fmt.Sprintf("%v > %v \t", hhcw.Code, hhcw.Chart.String())
 }
 
 func (hhcw HHCWEntity) Evaluate() Metric {
@@ -42,6 +39,16 @@ func (hhcw HHCWEntity) IsNonNullVote() bool {
 
 func (hhcw HHCWEntity) IsValidVote() bool {
 	return hhcw.Chart.Sum() == hhcw.Administrasi.Suara.Sah
+}
+
+func (hhcw HHCWEntity) GetCanonicalCode() []string {
+	return []string{
+		hhcw.Code[:2],
+		hhcw.Code[:4],
+		hhcw.Code[:6],
+		hhcw.Code[:10],
+		hhcw.Code[:13],
+	}
 }
 
 type ChartInfo struct {

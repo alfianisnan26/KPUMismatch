@@ -22,10 +22,11 @@ func (m SummaryModule) RawJson() []byte {
 }
 
 type Summary struct {
-	RawData     SummaryModule
-	NotNullData SummaryModule
-	ClearData   SummaryModule
-	AllInData   SummaryModule
+	RawData               SummaryModule
+	NotNullData           SummaryModule
+	ClearData             SummaryModule
+	AllInData             SummaryModule
+	ErrorBeyondMaxValData SummaryModule
 }
 
 type StaticSummary struct {
