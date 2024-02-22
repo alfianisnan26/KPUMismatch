@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"kawalrealcount/internal/data/model"
 	"kawalrealcount/internal/pkg/httpclient/kpu"
 	"kawalrealcount/internal/pkg/postgresql"
 	"kawalrealcount/internal/service/contributor"
 	"kawalrealcount/internal/service/scrapper_v2"
 	"kawalrealcount/internal/service/updater"
-	"os"
-	"strconv"
-	"time"
 )
 
 const secret = "MUST MANUALLY SET ON EVERY BUILD"
@@ -28,14 +30,20 @@ func main() {
 	postgresTableStats := os.Getenv("POSTGRES_TABLE_STATS")
 	postgresTableWebStats := os.Getenv("POSTGRES_TABLE_WEB_STATS")
 	postgresTableHistogram := os.Getenv("POSTGRES_TABLE_HISTOGRAM")
-	postgresTableKeyVal := os.Getenv("POSTGRES_TABLE_KEY_VAL")
-	maximumRunningThread, _ := strconv.Atoi(os.Getenv("MAX_RUNNING_THREAD"))
-	batchInsertLength, _ := strconv.Atoi(os.Getenv("BATCH_INSERT_LENGTH"))
+	mrt := os.Getenv("MAX_RUNNING_THREAD")
+	postgresTableKeyVal := strings.Trim(os.Getenv("POSTGRES_TABLE_KEY_VAL"), `" \n`)
+	maximumRunningThread, errMrt := strconv.Atoi(mrt)
+	if errMrt != nil {
+		panic(errMrt)
+	}
+	bil := strings.Trim(os.Getenv("BATCH_INSERT_LENGTH"), `" \n`)
+	batchInsertLength, errBil := strconv.Atoi(bil)
+	if errBil != nil {
+		panic(errBil)
+	}
 	workerType := os.Getenv("WORKER_TYPE")
-
 	postgresUrl := os.Getenv("POSTGRES_URL")
 	contributionToken := os.Getenv("CONTRIBUTION_TOKEN")
-	makeItSimpler := os.Getenv("MAKE_IT_SIMPLER") == "True"
 
 	var contributorData model.ContributorData
 	if contributionToken != "" {
@@ -85,7 +93,6 @@ func main() {
 		ValidRecordExpiry:          time.Hour * 3,
 		NotNullInvalidRecordExpiry: time.Minute * 30,
 		NullRecordExpiry:           time.Minute * 10,
-		MakeItSimpler:              makeItSimpler,
 	})
 
 	updaterSvc := updater.New(updater.Param{

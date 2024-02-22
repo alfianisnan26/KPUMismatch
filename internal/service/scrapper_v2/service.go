@@ -1,9 +1,10 @@
 package scrapper_v2
 
 import (
+	"time"
+
 	"kawalrealcount/internal/data/dao"
 	"kawalrealcount/internal/data/model"
-	"time"
 )
 
 type Service interface {
@@ -20,7 +21,6 @@ type Param struct {
 	ValidRecordExpiry          time.Duration
 	NotNullInvalidRecordExpiry time.Duration
 	NullRecordExpiry           time.Duration
-	MakeItSimpler              bool
 }
 
 type service struct {

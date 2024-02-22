@@ -2,8 +2,9 @@ package scrapper_v2
 
 import (
 	"fmt"
-	"kawalrealcount/internal/data/model"
 	"sync"
+
+	"kawalrealcount/internal/data/model"
 )
 
 func (svc *service) recursivePpwt(ppwt model.PPWTEntity, ppwtCh chan<- *model.PPWTEntity) error {
@@ -58,6 +59,10 @@ func (svc *service) ScrapAllPPWT() error {
 
 			if err := svc.DatabaseRepo.PutReplacePPWT(mapPpwt); err != nil {
 				return err
+			}
+
+			for k := range mapPpwt {
+				delete(mapPpwt, k)
 			}
 		}
 	}
