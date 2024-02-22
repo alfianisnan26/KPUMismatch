@@ -53,7 +53,7 @@ func (svc *service) ScrapAllPPWT() error {
 			mapPpwt[ppwt.Kode] = ppwt
 		}
 
-		if len(mapPpwt)%svc.BatchInsertLength == 0 || (finish && len(mapPpwt) > 0) {
+		if (len(mapPpwt) > 0 && len(mapPpwt)%svc.BatchInsertLength == 0) || (finish && len(mapPpwt) > 0) {
 
 			fmt.Printf("[%d] PPWT Gathered Sample: %s\n", len(mapPpwt), ppwt.GetCanonicalCode())
 
